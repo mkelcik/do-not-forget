@@ -123,6 +123,10 @@ func TestTranslator(t *testing.T) {
 		}
 	}
 
+	if got := c.languages(); got[0].Name != "Čeština" {
+		t.Errorf("languages() = %v, want Čeština first (collation, not bytes)", got)
+	}
+
 	sk := c.translator("sk")
 	for n, want := range map[int]string{1: "Dnes ešte 1 udalosť", 3: "Dnes ešte 3 udalosti", 5: "Dnes ešte 5 udalostí", 0: "Dnes ešte 0 udalostí"} {
 		if got := sk.T("header.left", "count", n); got != want {

@@ -250,25 +250,22 @@ footer button:hover { background: var(--line); color: var(--text); }
 
 <script type="module">
 import { Events, Browser } from "/wails/runtime.js";
-import { t, i18n, onLanguage, setLanguage } from "/i18n.js";
+import { t, i18n, onLanguage, setLanguage, hm, dur, esc, svc } from "/i18n.js";
 
 // Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
-let events = [], synced = null;
+let events = [], synced = null, sources = 1;
 const at = (day, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() + day); d.setHours(h, m, 0, 0); return d; };
 
 const hidden = new Set();
 let day = 0, open = null; // open: id of the expanded event
 
-const hm = (d) => d.toLocaleTimeString(i18n.lang, { hour: "2-digit", minute: "2-digit" });
-const dur = (e) => {
-  const m = Math.round((e.end - e.start) / 60000), h = Math.floor(m / 60);
-  return m < 60 ? t("dur.min", { m }) : m % 60 ? t("dur.hmin", { h, m: m % 60 }) : t("dur.h", { h });
-};
+// Countdown for today; a later meeting gets its day instead ("in 98 h" reads like today).
 const until = (d) => {
+  const n = [...Array(8).keys()].find((i) => sameDay(d, i)) ?? 7;
+  if (n > 0) return dayName(n);
   const m = Math.round((d - Date.now()) / 60000);
   return m < 60 ? t("in.min", { m }) : t("in.hmin", { h: Math.floor(m / 60), m: m % 60 });
 };
-const svc = (l) => l.includes("zoom") ? "Zoom" : l.includes("teams") ? "Teams" : "Meet";
 const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
 const visible = () => events.filter((e) => !hidden.has(e.calendar));
 const rsvp = (e) => `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
@@ -276,7 +273,6 @@ const rsvp = (e) => `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
 const agoMin = (m) => m < 1 ? t("ago.now") : t("ago.min", { m });
 const ago = (d) => agoMin(Math.round((Date.now() - d) / 60000));
 const initial = (n) => (n || "?").charAt(0).toUpperCase();
-const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function render() {
   const now = new Date();
@@ -307,7 +303,9 @@ function render() {
 
   // List: one day, or the next 7 days with a header per day (empty days skipped).
   let html;
-  if (day === 7) {
+  if (!sources) {
+    html = `<div class="empty">${t("list.no_calendars")}<br><button class="link-btn" id="connect">${t("list.connect")}</button></div>`;
+  } else if (day === 7) {
     html = [...Array(7).keys()].map((n) => { const h = dayHTML(n, now); return h && `<div class="day-head">${dayName(n)}</div>${h}`; })
       .join("") || `<div class="empty">${t("list.free_week")}</div>`;
   } else {
@@ -405,6 +403,10 @@ document.addEventListener("click", (ev) => {
     Events.Emit("respond", { id: ans.dataset.id, response: ans.dataset.respond });
     return render();
   }
+  if (t.closest("#connect")) {
+    document.body.classList.add("settings-open");
+    return document.getElementById("providers").classList.add("show");
+  }
   if (t.closest("#open-settings")) return document.body.classList.add("settings-open");
   if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
   if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
@@ -442,6 +444,7 @@ document.addEventListener("click", (ev) => {
 Events.On("events", ({ data }) => {
   events = (data.events ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
   synced = new Date(data.synced);
+  sources = data.sources;
   render();
 });
 Events.Emit("refresh");

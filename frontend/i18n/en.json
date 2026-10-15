@@ -15,6 +15,8 @@
   "dur.hmin": "{{h}} h {{m}} min",
   "in.min": "in {{m}} min",
   "in.hmin": "in {{h}} h {{m}} min",
+  "in.days_one": "in {{count}} day",
+  "in.days_other": "in {{count}} days",
 
   "hero.running": "In progress · ends {{time}}",
   "hero.next": "Next · {{in}}",
@@ -26,6 +28,8 @@
 
   "list.free_day": "Free day 🎉",
   "list.free_week": "Free all week 🎉",
+  "list.no_calendars": "No calendar connected",
+  "list.connect": "Connect a calendar",
   "list.conflict": "⚠ Conflict · {{from}} – {{to}}",
   "tag.pending": "Not answered",
   "tag.maybe": "Maybe",

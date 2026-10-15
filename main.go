@@ -125,7 +125,7 @@ func main() {
 		mu.Lock()
 		events = evs
 		mu.Unlock()
-		app.Event.Emit("events", map[string]any{"events": evs, "synced": now})
+		app.Event.Emit("events", map[string]any{"events": evs, "synced": now, "sources": len(sources)})
 		updateTray()
 	}
 	app.Event.On("refresh", func(*application.CustomEvent) { go refresh() })
@@ -260,13 +260,13 @@ func main() {
 		saveConfig(func(c *Config) { c.MutedUntil = until })
 		applyMute()
 	}
-	wasMuted := false
+	wasMuted := false // guarded by mu
 	applyMute = func() {
 		mu.Lock()
 		now := time.Now()
 		muted, label := cfg.mutedAt(now), muteLabel(cfg.MutedUntil, now)
-		mu.Unlock()
 		wasMuted = muted
+		mu.Unlock()
 		if runtime.GOOS == "darwin" && !muted {
 			tray.SetTemplateIcon(icons.SystrayMacTemplate)
 		} else {
@@ -308,9 +308,12 @@ func main() {
 		mu.Lock()
 		prefs := append(append([]string{cfg.Language}, webLangs...), systemLanguages()...)
 		mu.Unlock()
-		tr.Store(langs.translator(langs.resolve(prefs...)))
-		registerCategories()
-		applyMute() // rebuilds the tray menu and tooltip
+		// Every window says hello on load; only a real change rebuilds the menu and categories.
+		if code := langs.resolve(prefs...); code != tr.Load().code {
+			tr.Store(langs.translator(code))
+			registerCategories()
+			applyMute() // rebuilds the tray menu and tooltip
+		}
 		sendLanguage()
 	}
 	app.Event.On("i18n:hello", func(ev *application.CustomEvent) {
@@ -371,14 +374,28 @@ func main() {
 	}
 }
 
-// untilText is the countdown shown in the tray: "in 12 min", "in 1 h 5 min", "in progress until 17:57".
+// untilText is the countdown shown in the tray: "in 12 min", "in 1 h 5 min", "in progress until 17:57",
+// and for later days "tomorrow" or "in 3 days".
 func untilText(e *Event, now time.Time) string {
 	if !e.Start.After(now) {
 		return T("tray.running", "time", e.End.Format("15:04"))
+	}
+	switch days := daysBetween(now, e.Start); {
+	case days == 1:
+		return T("day.tomorrow")
+	case days > 1:
+		return T("in.days", "count", days)
 	}
 	m := int(e.Start.Sub(now).Round(time.Minute).Minutes())
 	if m < 60 {
 		return T("in.min", "m", m)
 	}
 	return T("in.hmin", "h", m/60, "m", m%60)
+}
+
+// daysBetween counts calendar days from a to b (0 = same day), DST-safe.
+func daysBetween(a, b time.Time) int {
+	y1, m1, d1 := a.Date()
+	y2, m2, d2 := b.In(a.Location()).Date()
+	return int(time.Date(y2, m2, d2, 0, 0, 0, 0, time.UTC).Sub(time.Date(y1, m1, d1, 0, 0, 0, 0, time.UTC)).Hours() / 24)
 }

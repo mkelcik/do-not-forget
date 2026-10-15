@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -58,6 +59,25 @@ func TestMuteLabel(t *testing.T) {
 	} {
 		if got := muteLabel(until, now); got != want {
 			t.Errorf("muteLabel(%v) = %q, want %q", until, got, want)
+		}
+	}
+}
+
+func TestUntilTextDays(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Bratislava")
+	if err != nil {
+		t.Skip(err)
+	}
+	now := time.Date(2026, 3, 28, 23, 0, 0, 0, loc) // clocks go forward the next night
+	for start, want := range map[time.Time]string{
+		now.Add(30 * time.Minute):   "o 30 min",
+		now.Add(90 * time.Minute):   "zajtra",
+		now.Add(25 * time.Hour):     "o 2 dni",
+		now.Add(6 * 24 * time.Hour): "o 7 dní", // Apr 4 00:00: the lost hour moves it a day
+	} {
+		e := Event{Start: start, End: start.Add(time.Hour)}
+		if got := untilText(&e, now); !strings.EqualFold(got, want) {
+			t.Errorf("untilText(%s) = %q, want %q", start, got, want)
 		}
 	}
 }

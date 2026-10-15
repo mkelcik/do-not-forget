@@ -12,6 +12,7 @@ NAME="do-not-forget"
 ASSET="${NAME}_${GOOS}_${GOARCH}"
 # Google OAuth client of the app (CI secrets, or .env locally). Not truly secret for a
 # desktop app, but kept out of the repo so forks use their own. Empty = user enters their own.
+# production: without it Wails builds its debug variant (devtools, FRONTEND_DEVSERVER_URL).
 LDFLAGS="-s -w -X main.version=${VERSION} -X main.googleClientID=${GOOGLE_CLIENT_ID:-} -X main.googleClientSecret=${GOOGLE_CLIENT_SECRET:-}"
 
 rm -rf build dist
@@ -19,13 +20,13 @@ mkdir -p build dist
 
 case "$GOOS" in
 linux)
-	go build -trimpath -ldflags "$LDFLAGS" -o "build/$NAME" .
+	go build -trimpath -tags production -ldflags "$LDFLAGS" -o "build/$NAME" .
 	tar -czf "dist/$ASSET.tar.gz" -C build "$NAME"
 	;;
 darwin)
 	app="build/$NAME.app"
 	mkdir -p "$app/Contents/MacOS"
-	go build -trimpath -ldflags "$LDFLAGS" -o "$app/Contents/MacOS/$NAME" .
+	go build -trimpath -tags production -ldflags "$LDFLAGS" -o "$app/Contents/MacOS/$NAME" .
 	# LSUIElement: tray-only app, no Dock icon. A bundle id is needed for notifications.
 	cat >"$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -50,7 +51,7 @@ PLIST
 	;;
 windows)
 	# windowsgui: no console window behind the tray app.
-	go build -trimpath -ldflags "$LDFLAGS -H windowsgui" -o "build/$NAME.exe" .
+	go build -trimpath -tags production -ldflags "$LDFLAGS -H windowsgui" -o "build/$NAME.exe" .
 	(cd build && 7z a -tzip "../dist/$ASSET.zip" "$NAME.exe" >/dev/null)
 	;;
 *)

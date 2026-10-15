@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/updater"
 )
@@ -55,5 +56,25 @@ func TestSignedProvider(t *testing.T) {
 	p.Provider = fakeProvider{url: srv.URL + "/unsigned.tar.gz"}
 	if _, err := p.Check(context.Background(), updater.CheckRequest{}); err == nil {
 		t.Fatal("unsigned release accepted")
+	}
+}
+
+// A server that accepts the request and never answers must not hang the update loop.
+func TestSignedProviderTimeout(t *testing.T) {
+	stall := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-stall }))
+	defer srv.Close()
+	defer close(stall)
+
+	p := signedProvider{Provider: fakeProvider{url: srv.URL + "/a.tar.gz"}, client: &http.Client{Timeout: 100 * time.Millisecond}}
+	done := make(chan error, 1)
+	go func() { _, err := p.Check(context.Background(), updater.CheckRequest{}); done <- err }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("stalled signature accepted")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Check hung on a stalled server")
 	}
 }

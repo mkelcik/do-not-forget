@@ -5,7 +5,8 @@ SHELL := /bin/sh
 export
 
 TOOLBIN := $(shell go env GOPATH)/bin
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo dev)
+# Only a clean checkout of a tag is a release version; anything else is dev (updater off).
+VERSION ?= $(or $(shell git describe --tags --exact-match --dirty 2>/dev/null | grep -v dirty | sed 's/^v//'),dev)
 
 .PHONY: help run build fmt fmt-check vet lint test vuln tidy-check tools ci dist clean
 

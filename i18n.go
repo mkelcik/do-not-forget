@@ -13,10 +13,11 @@ import (
 	"log"
 	"os"
 	"path"
-	"sort"
+	"slices"
 	"strings"
 	"sync/atomic"
 
+	"golang.org/x/text/collate"
 	"golang.org/x/text/feature/plural"
 	"golang.org/x/text/language"
 )
@@ -77,7 +78,8 @@ func (c *catalog) languages() []Language {
 	for _, t := range c.tags {
 		out = append(out, Language{Code: t.String(), Name: c.files[t.String()]["_name"]})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	col := collate.New(language.Und) // Čeština next to C, not after Z
+	slices.SortFunc(out, func(a, b Language) int { return col.CompareString(a.Name, b.Name) })
 	return out
 }
 

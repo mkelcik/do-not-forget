@@ -37,7 +37,7 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 	if err == nil {
 		err = app.Updater.Init(updater.Config{
 			CurrentVersion: version,
-			Providers:      []updater.Provider{signedProvider{Provider: gh, client: http.DefaultClient}},
+			Providers:      []updater.Provider{signedProvider{Provider: gh, client: &http.Client{Timeout: 30 * time.Second}}},
 			PublicKey:      updatePublicKey,
 		})
 	}
@@ -55,7 +55,9 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			if muted() {
 				continue
 			}
-			rel, err := app.Updater.Check(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), time.Minute) // a stalled request must not stop the loop
+			rel, err := app.Updater.Check(ctx)
+			cancel()
 			if err != nil {
 				log.Printf("update check: %v", err)
 				continue

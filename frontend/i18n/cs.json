@@ -16,6 +16,9 @@
   "dur.hmin": "{{h}} h {{m}} min",
   "in.min": "za {{m}} min",
   "in.hmin": "za {{h}} h {{m}} min",
+  "in.days_one": "za {{count}} den",
+  "in.days_few": "za {{count}} dny",
+  "in.days_other": "za {{count}} dní",
 
   "hero.running": "Probíhá · končí {{time}}",
   "hero.next": "Další · {{in}}",
@@ -28,6 +31,8 @@
 
   "list.free_day": "Volný den 🎉",
   "list.free_week": "Celý týden volno 🎉",
+  "list.no_calendars": "Není připojen žádný kalendář",
+  "list.connect": "Připojit kalendář",
   "list.conflict": "⚠ Kolize · {{from}} – {{to}}",
   "tag.pending": "Bez odpovědi",
   "tag.maybe": "Možná",

@@ -24,6 +24,15 @@ function applyStatic() {
   document.querySelectorAll("[data-i18n-title]").forEach((el) => { el.title = t(el.dataset.i18nTitle); });
 }
 
+// Formatting shared by the popup and the alert.
+export const hm = (d) => d.toLocaleTimeString(i18n.lang, { hour: "2-digit", minute: "2-digit" });
+export const dur = (e) => {
+  const m = Math.round((e.end - e.start) / 60000), h = Math.floor(m / 60);
+  return m < 60 ? t("dur.min", { m }) : m % 60 ? t("dur.hmin", { h, m: m % 60 }) : t("dur.h", { h });
+};
+export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+export const svc = (l) => l.includes("zoom") ? "Zoom" : l.includes("teams") ? "Teams" : "Meet";
+
 export function onLanguage(cb) { listeners.push(cb); }
 export function setLanguage(code) { Events.Emit("i18n:set", code); }
 

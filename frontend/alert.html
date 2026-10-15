@@ -66,16 +66,9 @@ h1 { font-size: clamp(34px, 5vw, 64px); font-weight: 700; line-height: 1.08; mar
 
 <script type="module">
 import { Events, Browser, Window } from "/wails/runtime.js";
-import { t, i18n, onLanguage } from "/i18n.js";
+import { t, onLanguage, hm, dur, esc, svc } from "/i18n.js";
 
 let events = [];
-const hm = (d) => d.toLocaleTimeString(i18n.lang, { hour: "2-digit", minute: "2-digit" });
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const svc = (l) => l.includes("zoom") ? "Zoom" : l.includes("teams") ? "Teams" : "Meet";
-const dur = (e) => {
-  const m = Math.round((e.end - e.start) / 60000), h = Math.floor(m / 60);
-  return m < 60 ? t("dur.min", { m }) : m % 60 ? t("dur.hmin", { h, m: m % 60 }) : t("dur.h", { h });
-};
 const when = (d) => { const m = Math.round((Date.now() - d) / 60000); return m <= 0 ? t("alert.starting") : t("alert.started", { m }); };
 // Escape first, then turn URLs into clickable buttons that open in the browser.
 const linkify = (s) => esc(s).replace(/https?:\/\/[^\s<]+/g, (u) => `<button data-url="${u}">${u}</button>`);
@@ -93,7 +86,7 @@ function render() {
   const panel = [
     e.response && `<div><div class="k">${t("rsvp.question")}</div><div class="rsvp">${["yes", "maybe", "no"]
       .map((r) => `<button data-respond="${r}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div></div>`,
-    e.description && `<div><div class="k">Popis</div><div class="desc">${linkify(e.description)}</div></div>`,
+    e.description && `<div><div class="k">${t("detail.description")}</div><div class="desc">${linkify(e.description)}</div></div>`,
     people.length && `<div><div class="k">${t("detail.attendees")} · ${people.length}</div><div class="people">${people.map((p) =>
       `<div class="person ${esc(p.status)}" title="${statuses.includes(p.status) ? t("status." + p.status) : ""}"><b>${esc((p.name || "?").charAt(0).toUpperCase())}</b>
         <span>${esc(p.name || "")}${p.name && p.name === e.organizer ? ` <small>${t("alert.organizer")}</small>` : ""}${p.self ? ` <small>${t("alert.you")}</small>` : ""}</span></div>`).join("")}
