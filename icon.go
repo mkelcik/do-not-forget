@@ -44,8 +44,8 @@ func trayIcon(muted bool) []byte {
 		// Slash from top-left to bottom-right, with a transparent gap so it reads on any panel.
 		red := color.RGBA{0xda, 0x44, 0x53, 0xff} // Breeze negative
 		size := 22 * scale
-		for y := 0; y < size; y++ {
-			for x := 0; x < size; x++ {
+		for y := range size {
+			for x := range size {
 				d := math.Abs(float64(x-y)) / math.Sqrt2
 				inside := x+y >= 4*scale && x+y <= 2*size-4*scale
 				switch {

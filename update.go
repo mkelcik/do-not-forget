@@ -51,6 +51,7 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			switch app.Updater.State() {
 			case updater.StateDownloading, updater.StateVerifying, updater.StateInstalling, updater.StateReady:
 				continue // an install is in flight; a Check now would clobber its state
+			default:
 			}
 			if muted() {
 				continue
@@ -120,7 +121,7 @@ func canSelfUpdate() bool {
 	if err != nil {
 		return false
 	}
-	f.Close()
-	os.Remove(f.Name())
+	_ = f.Close()
+	_ = os.Remove(f.Name()) //nolint:gosec // G703 false positive: the name comes from os.CreateTemp
 	return true
 }

@@ -43,13 +43,14 @@ func loadConfig() Config {
 
 func (c Config) save() error {
 	p := configPath()
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 		return err
 	}
 	b, _ := json.MarshalIndent(c, "", "  ")
 	// Write-then-rename so a crash mid-write can't leave a truncated config.
 	tmp := p + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+	// 0600: the config will hold account details.
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, p)

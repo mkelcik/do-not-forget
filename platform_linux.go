@@ -37,7 +37,7 @@ import (
 
 // skipTaskbar must run after the window is shown: the WM drops _NET_WM_STATE on unmap.
 func skipTaskbar(w application.Window) {
-	application.InvokeSync(func() { C.skip_taskbar(unsafe.Pointer(w.NativeWindow())) })
+	application.InvokeSync(func() { C.skip_taskbar(w.NativeWindow()) })
 }
 
 // setTrayTooltip sets the SNI ToolTip (Plasma renders title + rich-text subtitle).
@@ -60,7 +60,7 @@ func setTrayTooltip(tray *application.SystemTray, title, sub string) {
 		V2 string
 		V3 string
 	}{V2: title, V3: sub}
-	if err := p.Set("org.kde.StatusNotifierItem", "ToolTip", dbus.MakeVariant(tt)); err != nil {
+	if p.Set("org.kde.StatusNotifierItem", "ToolTip", dbus.MakeVariant(tt)) != nil {
 		return
 	}
 	if conn, err := dbus.SessionBus(); err == nil {

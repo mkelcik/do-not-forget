@@ -24,14 +24,14 @@ import (
 var assets embed.FS
 
 func main() {
-	dummyPath := flag.String("dummy", "dummy.json", "JSON file with fake events for development")
+	dummyPath := flag.String("dummy", "", "development: read fake events from this JSON file (e.g. dummy.json)")
 	previewAlert := flag.Bool("preview-alert", false, "show the fullscreen meeting alert for the next event right after start")
 	flag.Parse()
 
 	// Wayland ignores client window positioning, so the popup would land mid-screen.
 	// XWayland honours it. ponytail: drop when Wails supports layer-shell on Wayland.
 	if runtime.GOOS == "linux" && os.Getenv("GDK_BACKEND") == "" {
-		os.Setenv("GDK_BACKEND", "x11")
+		_ = os.Setenv("GDK_BACKEND", "x11")
 	}
 	frontend, _ := fs.Sub(assets, "frontend")
 	notifier := notifications.New()
@@ -86,8 +86,10 @@ func main() {
 	})
 
 	tray := app.SystemTray.New()
-	// ponytail: dummy is the only source until the Google connector lands.
-	sources := []Source{&dummySource{path: *dummyPath, base: time.Now()}}
+	var sources []Source
+	if *dummyPath != "" {
+		sources = append(sources, &dummySource{path: *dummyPath, base: time.Now()})
+	}
 
 	updateTray := func() {
 		mu.Lock()

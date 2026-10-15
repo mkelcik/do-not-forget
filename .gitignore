@@ -1,3 +1,5 @@
 do-not-forget
 .idea/
 *.swp
+build/
+dist/
