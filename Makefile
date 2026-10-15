@@ -1,5 +1,9 @@
 SHELL := /bin/sh
 
+# Local secrets for dev builds (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET); never committed.
+-include .env
+export
+
 TOOLBIN := $(shell go env GOPATH)/bin
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo dev)
 
@@ -25,7 +29,7 @@ run: build
 	./do-not-forget -dummy dummy.json
 
 build:
-	go build -ldflags "-X main.version=dev" -o do-not-forget .
+	go build -ldflags "-X main.version=dev -X main.googleClientID=$(GOOGLE_CLIENT_ID) -X main.googleClientSecret=$(GOOGLE_CLIENT_SECRET)" -o do-not-forget .
 
 fmt:
 	gofmt -w .

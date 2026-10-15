@@ -3,3 +3,4 @@ do-not-forget
 *.swp
 build/
 dist/
+.env

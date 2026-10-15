@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,17 +26,20 @@ const (
 )
 
 // startUpdater checks GitHub Releases at startup and every 6 hours and announces a new
-// version with a notification; its Aktualizovať button downloads, verifies (SHA256SUMS)
+// version with a notification; its Aktualizovať button downloads, verifies (SHA256SUMS + Ed25519 signature, see signing.go)
 // and restarts. The reminder repeats every check until updated, and waits out a mute.
 // Dev builds never check, so `go run` can't get replaced by a release binary.
-// ponytail: no release signing yet; set updater.Config.PublicKey once CI signs releases.
 func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool) {
 	if version == "dev" {
 		return
 	}
 	gh, err := github.New(github.Config{Repository: repo, ChecksumAsset: "SHA256SUMS"})
 	if err == nil {
-		err = app.Updater.Init(updater.Config{CurrentVersion: version, Providers: []updater.Provider{gh}})
+		err = app.Updater.Init(updater.Config{
+			CurrentVersion: version,
+			Providers:      []updater.Provider{signedProvider{Provider: gh, client: http.DefaultClient}},
+			PublicKey:      updatePublicKey,
+		})
 	}
 	if err != nil {
 		log.Printf("updater: %v", err)

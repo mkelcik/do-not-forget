@@ -10,7 +10,9 @@ GOOS="$(go env GOOS)"
 GOARCH="$(go env GOARCH)"
 NAME="do-not-forget"
 ASSET="${NAME}_${GOOS}_${GOARCH}"
-LDFLAGS="-s -w -X main.version=${VERSION}"
+# Google OAuth client of the app (CI secrets, or .env locally). Not truly secret for a
+# desktop app, but kept out of the repo so forks use their own. Empty = user enters their own.
+LDFLAGS="-s -w -X main.version=${VERSION} -X main.googleClientID=${GOOGLE_CLIENT_ID:-} -X main.googleClientSecret=${GOOGLE_CLIENT_SECRET:-}"
 
 rm -rf build dist
 mkdir -p build dist

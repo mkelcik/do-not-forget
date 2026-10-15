@@ -45,6 +45,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
       - name: Package
         shell: bash
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: VERSION="${GITHUB_REF_NAME#v}" ./scripts/dist.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -61,8 +64,25 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      # The in-app updater verifies every download against this file.
-      - run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      # The in-app updater verifies every download against SHA256SUMS and <asset>.sig
+      # (Ed25519 over the asset's SHA-256, public key in signing.go).
+      - name: Checksums and signatures
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          test -n "$UPDATE_SIGNING_KEY" || { echo "::error::UPDATE_SIGNING_KEY secret missing"; exit 1; }
+          cd dist
+          sha256sum * > SHA256SUMS
+          key="$(mktemp)"; trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$UPDATE_SIGNING_KEY" > "$key"
+          for f in do-not-forget_*; do
+            # Ed25519 one-shot signing needs a sized input, so no pipe.
+            openssl dgst -sha256 -binary -out "$f.digest" "$f"
+            openssl pkeyutl -sign -inkey "$key" -rawin -in "$f.digest" -out "$f.sig"
+            rm "$f.digest"
+          done
+          openssl pkey -in "$key" -pubout   # log the public half to compare with signing.go
+          ls -l; cat SHA256SUMS
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
