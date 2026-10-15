@@ -10,8 +10,9 @@
   --work: #0a84ff; --personal: #30d158;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #1c1c1e; --card: #2c2c2e; --text: #f2f2f7; --muted: #98989f; --line: #3a3a3c; }
+  :root:not([data-theme=light]) { --bg: #1c1c1e; --card: #2c2c2e; --text: #f2f2f7; --muted: #98989f; --line: #3a3a3c; }
 }
+:root[data-theme=dark] { --bg: #1c1c1e; --card: #2c2c2e; --text: #f2f2f7; --muted: #98989f; --line: #3a3a3c; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font: 13px/1.4 -apple-system, "Segoe UI", system-ui, Cantarell, sans-serif;
@@ -102,6 +103,55 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .actions button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); }
 .actions .join { border: 0; }
 
+/* Settings view replaces the agenda inside the same popup */
+#settings { display: none; flex: 1; flex-direction: column; min-height: 0; }
+body.settings-open > :not(#settings) { display: none; }
+body.settings-open #settings { display: flex; }
+.s-head { display: flex; align-items: center; gap: 6px; padding: 12px 10px 8px; }
+.s-head h1 { font-size: 15px; font-weight: 600; }
+.s-head button { padding: 2px 8px; border-radius: 6px; font-size: 16px; }
+.s-head button:hover { background: var(--line); }
+.s-body { flex: 1; overflow-y: auto; padding: 0 12px 16px; }
+.s-body h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: 16px 4px 6px; }
+.group { background: var(--card); border-radius: 10px; border: 1px solid var(--line); }
+.group > * + * { border-top: 1px solid var(--line); }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; min-height: 38px; }
+.opt small { display: block; color: var(--muted); font-size: 11px; }
+.opt select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 6px; }
+.switch { width: 32px; height: 18px; border-radius: 99px; background: var(--line); position: relative; flex: none; transition: background .15s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px #0004; }
+.switch.on { background: var(--personal); }
+.switch.on::after { transform: translateX(14px); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { padding: 3px 10px; font-size: 12px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: #fff; }
+.account-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.account-head .who { flex: 1; min-width: 0; }
+.account-head .who small { display: block; color: var(--muted); font-size: 11px; }
+.logo { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+  background: var(--bg); border: 1px solid var(--line); flex: none; }
+.link-btn { color: var(--accent); font-size: 12px; padding: 2px 6px; border-radius: 6px; }
+.link-btn.danger { color: var(--danger); }
+.link-btn:hover { background: var(--line); }
+.cal { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 48px; font-size: 12px; }
+.cal input { accent-color: var(--accent); }
+.cal .name { flex: 1; }
+.cal .dot { width: 10px; height: 10px; }
+.add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
+.providers { display: none; padding: 4px 8px 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
+.providers.show { display: grid; }
+.provider { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); text-align: left; font-size: 12px; }
+.provider:hover:not(:disabled) { border-color: var(--accent); }
+.provider:disabled { opacity: .5; cursor: default; }
+.provider small { display: block; color: var(--muted); font-size: 10px; }
+.about { text-align: center; color: var(--muted); font-size: 11px; margin-top: 18px; line-height: 1.7; }
+.about b { color: var(--text); font-size: 13px; }
+
 footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
   border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 footer button { padding: 2px 6px; border-radius: 6px; }
@@ -118,8 +168,69 @@ footer button:hover { background: var(--line); color: var(--text); }
 <main id="list"></main>
 <footer>
   <span id="sync"></span>
-  <span><button id="refresh" title="Obnoviť">⟳</button><button title="Nastavenia">⚙</button></span>
+  <span><button id="refresh" title="Obnoviť">⟳</button><button id="open-settings" title="Nastavenia">⚙</button></span>
 </footer>
+
+<!-- Settings: design mock, not wired to the backend yet (theme works locally). -->
+<section id="settings">
+  <div class="s-head"><button id="close-settings" title="Späť">‹</button><h1>Nastavenia</h1></div>
+  <div class="s-body">
+    <h2>Účty a kalendáre</h2>
+    <div class="group">
+      <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
+        <div class="who">michal@firma.sk<small>Google · synchronizované práve teraz</small></div>
+        <button class="link-btn danger">Odpojiť</button></div>
+      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#0a84ff"></span><span class="name">Práca</span></label>
+      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#bf5af2"></span><span class="name">Tím Platby</span></label>
+      <label class="cal"><input type="checkbox"><span class="dot" style="background:#8e8e93"></span><span class="name">Sviatky na Slovensku</span></label>
+    </div>
+    <div class="group" style="margin-top:8px">
+      <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
+        <div class="who">michal@gmail.com<small>Google · synchronizované pred 1 min</small></div>
+        <button class="link-btn danger">Odpojiť</button></div>
+      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#30d158"></span><span class="name">Súkromné</span></label>
+      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#ff9f0a"></span><span class="name">Rodina</span></label>
+    </div>
+    <div class="group" style="margin-top:8px">
+      <button class="add" id="add-account">+ Pridať účet</button>
+      <div class="providers" id="providers">
+        <button class="provider"><span class="logo" style="color:#4285f4">G</span><span>Google<small>Gmail, Workspace</small></span></button>
+        <button class="provider" disabled><span class="logo" style="color:#0078d4">M</span><span>Microsoft<small>Čoskoro</small></span></button>
+        <button class="provider" disabled><span class="logo"></span><span>iCloud<small>Čoskoro</small></span></button>
+        <button class="provider" disabled><span class="logo">⟳</span><span>CalDAV / iCal<small>Čoskoro</small></span></button>
+      </div>
+    </div>
+
+    <h2>Notifikácie</h2>
+    <div class="group">
+      <div class="opt">Upozorňovať na meetingy<span class="switch on"></span></div>
+      <div class="opt">Koľko minút vopred
+        <select><option>1 min</option><option selected>5 min</option><option>10 min</option><option>15 min</option></select></div>
+      <div class="opt"><span>Aj pri začiatku<small>Druhé upozornenie, keď meeting začne</small></span><span class="switch"></span></div>
+      <div class="opt"><span>Celoobrazovkové upozornenie<small>Pri začiatku meetingu prekryje celú obrazovku</small></span><span class="switch on"></span></div>
+      <div class="opt"><span>Len meetingy s odkazom<small>Ignorovať udalosti bez Meet/Zoom/Teams</small></span><span class="switch"></span></div>
+      <div class="opt">Zvuk<span class="switch on"></span></div>
+    </div>
+
+    <h2>Vzhľad</h2>
+    <div class="group">
+      <div class="opt">Téma<div class="seg" id="theme"><button data-theme="" class="on">Systém</button><button data-theme="light">Svetlá</button><button data-theme="dark">Tmavá</button></div></div>
+      <div class="opt">Jazyk<select><option selected>Slovenčina</option><option>English</option><option>Čeština</option></select></div>
+      <div class="opt">Zobrazovať odmietnuté udalosti<span class="switch on"></span></div>
+      <div class="opt"><span>Odpočet v lište<small>Text vedľa ikonky (macOS)</small></span><span class="switch on"></span></div>
+    </div>
+
+    <h2>Všeobecné</h2>
+    <div class="group">
+      <div class="opt">Spustiť po prihlásení<span class="switch on"></span></div>
+      <div class="opt">Synchronizovať každých
+        <select><option selected>1 min</option><option>5 min</option><option>15 min</option></select></div>
+    </div>
+
+    <div class="about"><b>do-not-forget</b><br>verzia 0.1.0-dev<br>
+      <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget">github.com/mkelcik/do-not-forget</button></div>
+  </div>
+</section>
 
 <script type="module">
 import { Events, Browser } from "/wails/runtime.js";
@@ -235,6 +346,18 @@ document.addEventListener("click", (ev) => {
     if (e) e.response = ans.dataset.respond; // optimistic, the backend refresh confirms
     Events.Emit("respond", { id: ans.dataset.id, response: ans.dataset.respond });
     return render();
+  }
+  if (t.closest("#open-settings")) return document.body.classList.add("settings-open");
+  if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
+  if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
+  const sw = t.closest(".switch");
+  if (sw) return sw.classList.toggle("on"); // mock: not persisted yet
+  const theme = t.closest("#theme button");
+  if (theme) {
+    document.querySelectorAll("#theme button").forEach((b) => b.classList.toggle("on", b === theme));
+    if (theme.dataset.theme) document.documentElement.dataset.theme = theme.dataset.theme;
+    else delete document.documentElement.dataset.theme;
+    return;
   }
   const link = t.closest("[data-url]");
   if (link) return Browser.OpenURL(link.dataset.url);

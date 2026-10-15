@@ -4,13 +4,25 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Config is the user's persisted settings, in <UserConfigDir>/do-not-forget/config.json.
 type Config struct {
 	Width  int `json:"width"`
 	Height int `json:"height"`
+	// NotifyMinutes is how long before a meeting to send a reminder; 0 turns reminders off.
+	NotifyMinutes int `json:"notifyMinutes"`
+	// FullscreenAlert covers the screen when a meeting starts, for when a notification gets missed.
+	FullscreenAlert bool `json:"fullscreenAlert"`
+	// MutedUntil silences reminders and alerts until then; zero means not muted.
+	MutedUntil time.Time `json:"mutedUntil"`
 }
+
+// muteForever is "until I turn it back on".
+var muteForever = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
+
+func (c Config) mutedAt(now time.Time) bool { return now.Before(c.MutedUntil) }
 
 func configPath() string {
 	dir, err := os.UserConfigDir()
@@ -22,7 +34,7 @@ func configPath() string {
 
 // loadConfig never fails: a missing or broken file just means defaults.
 func loadConfig() Config {
-	c := Config{Width: 380, Height: 560}
+	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true}
 	if b, err := os.ReadFile(configPath()); err == nil {
 		_ = json.Unmarshal(b, &c)
 	}

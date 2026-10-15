@@ -18,6 +18,7 @@ type Event struct {
 	AllDay      bool       `json:"allDay,omitempty"`
 	Location    string     `json:"location,omitempty"`
 	Description string     `json:"description,omitempty"`
+	Organizer   string     `json:"organizer,omitempty"`
 	Link        string     `json:"link,omitempty"`        // meeting URL (Meet, Zoom, Teams, ...)
 	CalendarURL string     `json:"calendarUrl,omitempty"` // the event in the provider's web UI
 	Attendees   []Attendee `json:"attendees,omitempty"`
