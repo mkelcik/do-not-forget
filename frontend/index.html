@@ -6,7 +6,7 @@
 <style>
 :root {
   --bg: #f7f7f8; --card: #fff; --text: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea;
-  --accent: #0a84ff; --danger: #ff453a;
+  --accent: #0a84ff; --danger: #ff453a; --warn: #ff9f0a;
   --work: #0a84ff; --personal: #30d158;
 }
 @media (prefers-color-scheme: dark) {
@@ -54,6 +54,23 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .ev .body { flex: 1; min-width: 0; }
 .ev .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ev .sub { color: var(--muted); font-size: 12px; }
+/* RSVP: pending = dashed bar, maybe = hollow bar, declined = struck through */
+.ev.rsvp-pending .bar { background: repeating-linear-gradient(var(--c) 0 3px, transparent 3px 6px); }
+.ev.rsvp-maybe .bar { background: none; border: 1px solid var(--c); width: 3px; }
+.ev.rsvp-no { opacity: .45; }
+.ev.rsvp-no .name { text-decoration: line-through; }
+.tag { font-size: 10px; font-weight: 600; padding: 0 5px; border-radius: 4px; margin-left: 4px; }
+.tag.pending { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.tag.maybe { color: var(--muted); background: var(--line); }
+.rsvp { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; width: fit-content; }
+.rsvp button { padding: 3px 12px; font-size: 12px; border-right: 1px solid var(--line); }
+.rsvp button:last-child { border-right: 0; }
+.rsvp button:hover { background: var(--line); }
+.rsvp button.on[data-respond=yes] { background: var(--personal); color: #fff; }
+.rsvp button.on[data-respond=maybe] { background: var(--warn); color: #fff; }
+.rsvp button.on[data-respond=no] { background: var(--danger); color: #fff; }
+.hero .ask { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--warn); font-weight: 600; }
+.person.maybe b { background: var(--warn); color: #fff; }
 .conflict { margin: 4px 0; padding: 2px 0 2px; border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
   background: color-mix(in srgb, var(--danger) 7%, transparent); }
@@ -68,8 +85,12 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .allday { padding: 5px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12px;
   background: color-mix(in srgb, var(--c) 18%, transparent); }
 
-.detail { margin: 0 8px 8px 60px; padding: 10px 12px; border-radius: 8px; background: var(--card);
-  border: 1px solid var(--line); font-size: 12px; display: grid; gap: 8px; }
+/* Expanded event: row + detail in one card, full width */
+.open-card { margin: 4px 0; border-radius: 10px; background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); box-shadow: 0 2px 8px #00000026; }
+.open-card .ev:hover { background: none; }
+.detail { padding: 2px 12px 12px; font-size: 12px; display: grid; gap: 8px;
+  border-top: 1px solid var(--line); margin: 0 8px; padding-top: 10px; }
 .detail .k { color: var(--muted); font-size: 11px; }
 .people { display: flex; flex-wrap: wrap; gap: 4px; }
 .person { padding: 2px 6px 2px 2px; border-radius: 99px; background: var(--bg); display: flex; gap: 4px; align-items: center; }
@@ -97,72 +118,54 @@ footer button:hover { background: var(--line); color: var(--text); }
 <main id="list"></main>
 <footer>
   <span id="sync"></span>
-  <span><button title="Obnoviť">⟳</button><button title="Nastavenia">⚙</button></span>
+  <span><button id="refresh" title="Obnoviť">⟳</button><button title="Nastavenia">⚙</button></span>
 </footer>
 
-<script>
-// Dummy data — relative to "now" so the UI always looks live.
-const calendars = {
-  work: { name: "Práca", color: "var(--work)" },
-  personal: { name: "Súkromné", color: "var(--personal)" },
-};
-const at = (day, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() + day); d.setHours(h, m, 0, 0); return d; };
-const rel = (min) => new Date(Date.now() + min * 60000);
-const ppl = (...n) => n.map(([name, s]) => ({ name, s }));
+<script type="module">
+import { Events, Browser } from "/wails/runtime.js";
 
-const events = [
-  { cal: "personal", title: "Mama — narodeniny", allDay: true, start: at(0, 0) },
-  { cal: "work", title: "Ranný sync tímu", start: at(0, 9), end: at(0, 9, 15), link: "meet.google.com/abc-defg-hij",
-    people: ppl(["Michal", "yes"], ["Jana", "yes"], ["Peter", "yes"]) },
-  { cal: "work", title: "Code review: platby", start: rel(-35), end: rel(-5), link: "meet.google.com/xyz",
-    people: ppl(["Michal", "yes"], ["Tomáš", "yes"]) },
-  { cal: "work", title: "Standup", start: rel(12), end: rel(27), link: "meet.google.com/std-up-now",
-    location: "Zasadačka Orion", desc: "Čo som robil, čo budem robiť, čo ma blokuje.",
-    people: ppl(["Michal", "yes"], ["Jana", "yes"], ["Peter", "maybe"], ["Lucia", "no"], ["Tomáš", "yes"]) },
-  { cal: "personal", title: "Zubár", start: rel(90), end: rel(135), location: "Obchodná 12, Bratislava" },
-  { cal: "work", title: "1:1 s Janou", start: rel(110), end: rel(140), link: "zoom.us/j/123456",
-    people: ppl(["Michal", "yes"], ["Jana", "yes"]) },
-  { cal: "work", title: "Plánovanie sprintu", start: rel(200), end: rel(260), link: "meet.google.com/plan",
-    desc: "Prejdeme backlog a odhady." },
-  { cal: "personal", title: "Tréning", start: at(0, 19), end: at(0, 20, 30), location: "Fitko" },
-  { cal: "work", title: "Retro", start: at(1, 10), end: at(1, 11), link: "meet.google.com/retro" },
-  { cal: "work", title: "Demo pre klienta", start: at(1, 14), end: at(1, 15), link: "teams.microsoft.com/l/meetup" },
-  { cal: "personal", title: "Večera s Katkou", start: at(1, 19, 30), end: at(1, 21), location: "Bistro Fach" },
-];
+// Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
+let events = [], synced = null;
+const at = (day, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() + day); d.setHours(h, m, 0, 0); return d; };
 
 const hidden = new Set();
-let day = 0, open = null;
+let day = 0, open = null; // open: id of the expanded event
 
 const hm = (d) => d.toLocaleTimeString("sk", { hour: "2-digit", minute: "2-digit" });
 const dur = (e) => { const m = Math.round((e.end - e.start) / 60000); return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? " " + (m % 60) + " min" : ""}` : `${m} min`; };
 const until = (d) => { const m = Math.round((d - Date.now()) / 60000); return m < 60 ? `o ${m} min` : `o ${Math.floor(m / 60)} h ${m % 60} min`; };
 const svc = (l) => l.includes("zoom") ? "Zoom" : l.includes("teams") ? "Teams" : "Meet";
 const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
-const visible = () => events.filter((e) => !hidden.has(e.cal));
+const visible = () => events.filter((e) => !hidden.has(e.calendar));
+const rsvp = (e) => `<div class="rsvp">${[["yes", "Áno"], ["maybe", "Možno"], ["no", "Nie"]].map(([r, l]) =>
+  `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${l}</button>`).join("")}</div>`;
+const ago = (d) => { const m = Math.round((Date.now() - d) / 60000); return m < 1 ? "práve teraz" : `pred ${m} min`; };
 const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function render() {
   const now = new Date();
   document.getElementById("today").textContent = now.toLocaleDateString("sk", { weekday: "long", day: "numeric", month: "long" });
-  const todayLeft = visible().filter((e) => sameDay(e.start, 0) && !e.allDay && e.end > now);
+  const todayLeft = visible().filter((e) => sameDay(e.start, 0) && !e.allDay && e.response !== "no" && e.end > now);
   document.getElementById("summary").textContent = `Dnes ešte ${todayLeft.length} udalostí`;
-  document.getElementById("sync").textContent = "Synchronizované pred 2 min";
+  document.getElementById("sync").textContent = synced ? `Synchronizované ${ago(synced)}` : "Načítavam…";
 
-  document.getElementById("chips").innerHTML = Object.entries(calendars).map(([id, c]) =>
-    `<button class="chip ${hidden.has(id) ? "off" : ""}" data-cal="${id}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join("");
+  const calendars = new Map(events.map((e) => [e.calendar, e.color]));
+  document.getElementById("chips").innerHTML = [...calendars].map(([name, color]) =>
+    `<button class="chip ${hidden.has(name) ? "off" : ""}" data-cal="${esc(name)}"><span class="dot" style="background:${color}"></span>${esc(name)}</button>`).join("");
 
   // Hero: running meeting, else next one.
-  const next = visible().filter((e) => !e.allDay && e.end > now).sort((a, b) => a.start - b.start)[0];
+  const next = visible().filter((e) => !e.allDay && e.response !== "no" && e.end > now).sort((a, b) => a.start - b.start)[0];
   const hero = document.getElementById("hero");
   if (!next) { hero.innerHTML = ""; } else {
     const running = next.start <= now;
     const pct = running ? (now - next.start) / (next.end - next.start) * 100 : 0;
-    hero.innerHTML = `<div class="hero" style="--c:${calendars[next.cal].color}">
+    hero.innerHTML = `<div class="hero" style="--c:${next.color}">
       <div class="when">${running ? "Prebieha · končí " + hm(next.end) : "Ďalej · " + until(next.start)}</div>
       <div class="title">${esc(next.title)}</div>
       <div class="meta">${hm(next.start)} – ${hm(next.end)} · ${dur(next)}${next.location ? " · " + esc(next.location) : ""}</div>
       ${running ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ""}
-      ${next.link ? `<div class="row"><span class="meta">${(next.people || []).length} účastníkov</span><button class="join">Pripojiť cez ${svc(next.link)}</button></div>` : ""}
+      ${next.response === "pending" ? `<div class="ask">Zúčastníš sa? ${rsvp(next)}</div>` : ""}
+      ${next.link ? `<div class="row"><span class="meta">${(next.attendees || []).length} účastníkov</span><button class="join" data-url="${esc(next.link)}">Pripojiť cez ${svc(next.link)}</button></div>` : ""}
     </div>`;
   }
 
@@ -170,12 +173,14 @@ function render() {
   const list = visible().filter((e) => sameDay(e.start, day)).sort((a, b) => a.start - b.start);
   const timed = list.filter((e) => !e.allDay);
   let html = list.filter((e) => e.allDay).map((e) =>
-    `<div class="allday" style="--c:${calendars[e.cal].color}">🎂 ${esc(e.title)}</div>`).join("");
+    `<div class="allday" style="--c:${e.color}">🎂 ${esc(e.title)}</div>`).join("");
   // Overlapping events form one cluster; clusters of 2+ render as a conflict group.
   const clusters = [];
   for (const e of timed) {
     const c = clusters.at(-1);
-    if (c && e.start < c.end) { c.items.push(e); if (e.end > c.end) c.end = e.end; }
+    // Declined events never cause a conflict.
+    if (c && !c.declined && e.response !== "no" && e.start < c.end) { c.items.push(e); if (e.end > c.end) c.end = e.end; }
+    else if (e.response === "no") clusters.push({ start: e.start, end: e.end, items: [e], declined: true });
     else clusters.push({ start: e.start, end: e.end, items: [e] });
   }
   let nowShown = day !== 0;
@@ -190,32 +195,50 @@ function render() {
 }
 
 function row(e) {
-  const now = new Date(), i = events.indexOf(e);
-  return `<div class="ev ${e.end < now ? "past" : ""}" data-i="${i}" style="--c:${calendars[e.cal].color}">
+  if (open === e.id) return `<div class="open-card" style="--c:${e.color}">${rowHTML(e)}${detail(e)}</div>`;
+  return rowHTML(e);
+}
+
+function rowHTML(e) {
+  const now = new Date();
+  const tag = e.response === "pending" ? `<span class="tag pending">Neodpovedané</span>`
+    : e.response === "maybe" ? `<span class="tag maybe">Možno</span>` : "";
+  return `<div class="ev ${e.end < now ? "past" : ""} ${e.response ? "rsvp-" + e.response : ""}" data-id="${esc(e.id)}" style="--c:${e.color}">
       <div class="time">${hm(e.start)}<small>${hm(e.end)}</small></div>
       <div class="bar"></div>
-      <div class="body"><div class="name">${esc(e.title)}</div>
-        <div class="sub">${dur(e)} · ${esc(e.location || calendars[e.cal].name)}</div></div>
-      ${e.link && e.end > now ? `<button class="cam">${svc(e.link)}</button>` : ""}
-    </div>${open === i ? detail(e) : ""}`;
+      <div class="body"><div class="name">${esc(e.title)}${tag}</div>
+        <div class="sub">${dur(e)} · ${esc(e.calendar)}${e.location ? " · " + esc(e.location) : ""}</div></div>
+      ${e.link && e.end > now ? `<button class="cam" data-url="${esc(e.link)}">${svc(e.link)}</button>` : ""}
+    </div>`;
 }
 
 function detail(e) {
-  const people = (e.people || []).map((p) =>
-    `<span class="person ${p.s}"><b>${p.name[0]}</b>${esc(p.name)}</span>`).join("");
-  return `<div class="detail">
-    <div><div class="k">Čas</div>${hm(e.start)} – ${hm(e.end)} (${dur(e)}) · ${calendars[e.cal].name}</div>
-    ${e.location ? `<div><div class="k">Miesto</div>${esc(e.location)}</div>` : ""}
-    ${e.link ? `<div><div class="k">Odkaz</div>${esc(e.link)}</div>` : ""}
-    ${e.desc ? `<div><div class="k">Popis</div>${esc(e.desc)}</div>` : ""}
-    ${people ? `<div><div class="k">Účastníci</div><div class="people">${people}</div></div>` : ""}
-    <div class="actions">${e.link ? `<button class="join">Pripojiť sa</button>` : ""}<button>Otvoriť v kalendári</button></div>
-  </div>`;
+  const people = (e.attendees || []).map((p) =>
+    `<span class="person ${esc(p.status)}"><b>${esc(p.name[0])}</b>${esc(p.name)}</span>`).join("");
+  const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">Pripojiť sa</button>` : "") +
+    (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">Otvoriť v kalendári</button>` : "");
+  const body = [
+    e.link && `<div><div class="k">Odkaz</div>${esc(e.link)}</div>`,
+    e.description && `<div><div class="k">Popis</div>${esc(e.description)}</div>`,
+    e.response && `<div><div class="k">Zúčastníš sa?</div>${rsvp(e)}</div>`,
+    people && `<div><div class="k">Účastníci</div><div class="people">${people}</div></div>`,
+    actions && `<div class="actions">${actions}</div>`,
+  ].filter(Boolean).join("");
+  return body && `<div class="detail">${body}</div>`; // nothing to show → just the outlined row
 }
 
 document.addEventListener("click", (ev) => {
   const t = ev.target;
-  if (t.closest(".cam, .join, .actions button")) return; // dummy: links do nothing yet
+  const ans = t.closest("[data-respond]");
+  if (ans) {
+    const e = events.find((x) => x.id === ans.dataset.id);
+    if (e) e.response = ans.dataset.respond; // optimistic, the backend refresh confirms
+    Events.Emit("respond", { id: ans.dataset.id, response: ans.dataset.respond });
+    return render();
+  }
+  const link = t.closest("[data-url]");
+  if (link) return Browser.OpenURL(link.dataset.url);
+  if (t.closest("#refresh")) return Events.Emit("refresh");
   const chip = t.closest(".chip");
   if (chip) { const c = chip.dataset.cal; hidden.has(c) ? hidden.delete(c) : hidden.add(c); return render(); }
   const tab = t.closest(".tabs button");
@@ -225,9 +248,15 @@ document.addEventListener("click", (ev) => {
     return render();
   }
   const row = t.closest(".ev");
-  if (row) { const i = +row.dataset.i; open = open === i ? null : i; render(); }
+  if (row) { open = open === row.dataset.id ? null : row.dataset.id; render(); }
 });
 
+Events.On("events", ({ data }) => {
+  events = data.events.map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  synced = new Date(data.synced);
+  render();
+});
+Events.Emit("refresh");
 render();
 setInterval(render, 30000);
 </script>

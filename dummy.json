@@ -1,0 +1,32 @@
+{
+  "calendars": {
+    "Práca": "#0a84ff",
+    "Súkromné": "#30d158"
+  },
+  "events": [
+    { "calendar": "Súkromné", "title": "Mama — narodeniny", "allDay": true },
+    { "calendar": "Práca", "title": "Ranný sync tímu", "at": "09:00", "dur": "15m", "response": "yes",
+      "link": "https://meet.google.com/abc-defg-hij",
+      "attendees": [{ "name": "Michal", "status": "yes", "self": true }, { "name": "Jana", "status": "yes" }, { "name": "Peter", "status": "yes" }] },
+    { "calendar": "Práca", "title": "Code review: platby", "at": "-35m", "dur": "30m", "response": "yes",
+      "link": "https://meet.google.com/xyz-abcd-efg",
+      "attendees": [{ "name": "Michal", "status": "yes", "self": true }, { "name": "Tomáš", "status": "yes" }] },
+    { "calendar": "Práca", "title": "Standup", "at": "+12m", "dur": "15m", "response": "yes",
+      "link": "https://meet.google.com/std-upnw-now", "location": "Zasadačka Orion",
+      "description": "Čo som robil, čo budem robiť, čo ma blokuje.",
+      "attendees": [{ "name": "Michal", "status": "yes", "self": true }, { "name": "Jana", "status": "yes" }, { "name": "Peter", "status": "maybe" },
+                    { "name": "Lucia", "status": "no" }, { "name": "Tomáš", "status": "yes" }] },
+    { "calendar": "Súkromné", "title": "Zubár", "at": "+90m", "dur": "45m", "location": "Obchodná 12, Bratislava" },
+    { "calendar": "Práca", "title": "1:1 s Janou", "at": "+110m", "dur": "30m", "response": "pending", "link": "https://zoom.us/j/123456",
+      "attendees": [{ "name": "Michal", "status": "yes", "self": true }, { "name": "Jana", "status": "yes" }] },
+    { "calendar": "Práca", "title": "Plánovanie sprintu", "at": "+200m", "dur": "1h", "response": "maybe", "link": "https://meet.google.com/pla-nnin-gsp",
+      "description": "Prejdeme backlog a odhady." },
+    { "calendar": "Práca", "title": "Firemný webinár", "at": "+150m", "dur": "30m", "response": "no",
+      "link": "https://zoom.us/j/987654", "attendees": [{ "name": "Michal", "status": "no", "self": true }, { "name": "HR", "status": "yes" }] },
+    { "calendar": "Súkromné", "title": "Tréning", "at": "19:00", "dur": "1h30m", "location": "Fitko" },
+    { "calendar": "Práca", "title": "Retro", "day": 1, "at": "10:00", "dur": "1h", "link": "https://meet.google.com/ret-roro-ret" },
+    { "calendar": "Práca", "title": "Demo pre klienta", "day": 1, "at": "14:00", "dur": "1h", "response": "pending",
+      "link": "https://teams.microsoft.com/l/meetup-join/abc" },
+    { "calendar": "Súkromné", "title": "Večera s Katkou", "day": 1, "at": "19:30", "dur": "1h30m", "location": "Bistro Fach" }
+  ]
+}
