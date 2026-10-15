@@ -33,7 +33,13 @@ func configPath() string {
 }
 
 // loadConfig never fails: a missing or broken file just means defaults.
+// It also locks the config dir to the user (0700): Wails' notifier creates it 0755 on Linux,
+// and MkdirAll leaves an existing dir's mode alone, so tightening it first sticks.
 func loadConfig() Config {
+	dir := filepath.Dir(configPath())
+	_ = os.MkdirAll(dir, 0o700)
+	_ = os.Chmod(dir, 0o700) //nolint:gosec // G302: a directory needs the x bit; 0700 is owner-only
+
 	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true}
 	if b, err := os.ReadFile(configPath()); err == nil {
 		_ = json.Unmarshal(b, &c)
