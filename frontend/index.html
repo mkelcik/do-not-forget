@@ -45,6 +45,10 @@ header small { color: var(--muted); display: block; font-size: 12px; }
 
 .tabs { display: flex; margin: 0 12px; background: var(--line); border-radius: 8px; padding: 2px; }
 .tabs button { flex: 1; padding: 4px; border-radius: 6px; font-size: 12px; color: var(--muted); }
+.tabs button[hidden] { display: none; }
+.day-head { position: sticky; top: -8px; z-index: 1; background: var(--bg); padding: 10px 4px 4px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.day-head:first-child { padding-top: 2px; }
 .tabs button.on { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px #0000001a; }
 
 main { flex: 1; overflow-y: auto; padding: 8px 12px; }
@@ -177,76 +181,76 @@ footer button:hover { background: var(--line); color: var(--text); }
   <div class="chips" id="chips"></div>
 </header>
 <section id="hero"></section>
-<nav class="tabs"><button data-day="0" class="on">Dnes</button><button data-day="1">Zajtra</button></nav>
+<nav class="tabs"><button data-day="0" class="on" data-i18n="day.today"></button><button data-day="1" data-i18n="day.tomorrow"></button><button data-day="7" id="week-tab" data-i18n="tab.week"></button></nav>
 <main id="list"></main>
 <footer>
   <span id="sync"></span>
-  <span><button id="refresh" title="Obnoviť">⟳</button><button id="open-settings" title="Nastavenia">⚙</button></span>
+  <span><button id="refresh" data-i18n-title="footer.refresh">⟳</button><button id="open-settings" data-i18n-title="footer.settings">⚙</button></span>
 </footer>
 
 <!-- Settings: design mock, not wired to the backend yet (theme works locally). -->
 <section id="settings">
-  <div class="s-head"><button id="close-settings" title="Späť">‹</button><h1>Nastavenia</h1></div>
+  <div class="s-head"><button id="close-settings" data-i18n-title="settings.back">‹</button><h1 data-i18n="settings.title"></h1></div>
   <div class="s-body">
-    <h2>Účty a kalendáre</h2>
+    <h2 data-i18n="settings.accounts"></h2>
     <div class="group">
       <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
-        <div class="who">michal@firma.sk<small>Google · synchronizované práve teraz</small></div>
-        <button class="link-btn danger">Odpojiť</button></div>
+        <div class="who">michal@firma.sk<small class="synced" data-provider="Google" data-min="0"></small></div>
+        <button class="link-btn danger" data-i18n="settings.disconnect"></button></div>
       <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#0a84ff"></span><span class="name">Práca</span></label>
       <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#bf5af2"></span><span class="name">Tím Platby</span></label>
       <label class="cal"><input type="checkbox"><span class="dot" style="background:#8e8e93"></span><span class="name">Sviatky na Slovensku</span></label>
     </div>
     <div class="group" style="margin-top:8px">
       <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
-        <div class="who">michal@gmail.com<small>Google · synchronizované pred 1 min</small></div>
-        <button class="link-btn danger">Odpojiť</button></div>
+        <div class="who">michal@gmail.com<small class="synced" data-provider="Google" data-min="1"></small></div>
+        <button class="link-btn danger" data-i18n="settings.disconnect"></button></div>
       <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#30d158"></span><span class="name">Súkromné</span></label>
       <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#ff9f0a"></span><span class="name">Rodina</span></label>
     </div>
     <div class="group" style="margin-top:8px">
-      <button class="add" id="add-account">+ Pridať účet</button>
+      <button class="add" id="add-account" data-i18n="settings.add_account"></button>
       <div class="providers" id="providers">
         <button class="provider"><span class="logo" style="color:#4285f4">G</span><span>Google<small>Gmail, Workspace</small></span></button>
-        <button class="provider" disabled><span class="logo" style="color:#0078d4">M</span><span>Microsoft<small>Čoskoro</small></span></button>
-        <button class="provider" disabled><span class="logo"></span><span>iCloud<small>Čoskoro</small></span></button>
-        <button class="provider" disabled><span class="logo">⟳</span><span>CalDAV / iCal<small>Čoskoro</small></span></button>
+        <button class="provider" disabled><span class="logo" style="color:#0078d4">M</span><span>Microsoft<small data-i18n="settings.coming_soon"></small></span></button>
+        <button class="provider" disabled><span class="logo"></span><span>iCloud<small data-i18n="settings.coming_soon"></small></span></button>
+        <button class="provider" disabled><span class="logo">⟳</span><span>CalDAV / iCal<small data-i18n="settings.coming_soon"></small></span></button>
       </div>
     </div>
 
-    <h2>Notifikácie</h2>
+    <h2 data-i18n="settings.notifications"></h2>
     <div class="group">
-      <div class="opt">Upozorňovať na meetingy<span class="switch on"></span></div>
-      <div class="opt">Koľko minút vopred
-        <select><option>1 min</option><option selected>5 min</option><option>10 min</option><option>15 min</option></select></div>
-      <div class="opt"><span>Aj pri začiatku<small>Druhé upozornenie, keď meeting začne</small></span><span class="switch"></span></div>
-      <div class="opt"><span>Celoobrazovkové upozornenie<small>Pri začiatku meetingu prekryje celú obrazovku</small></span><span class="switch on"></span></div>
-      <div class="opt"><span>Len meetingy s odkazom<small>Ignorovať udalosti bez Meet/Zoom/Teams</small></span><span class="switch"></span></div>
-      <div class="opt">Zvuk<span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.notify"></span><span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.notify_minutes"></span><select data-minutes="1,5,10,15" data-selected="5"></select></div>
+      <div class="opt"><span><span data-i18n="settings.notify_start"></span><small data-i18n="settings.notify_start_desc"></small></span><span class="switch"></span></div>
+      <div class="opt"><span><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreen_desc"></small></span><span class="switch on"></span></div>
+      <div class="opt"><span><span data-i18n="settings.only_links"></span><small data-i18n="settings.only_links_desc"></small></span><span class="switch"></span></div>
+      <div class="opt"><span data-i18n="settings.sound"></span><span class="switch on"></span></div>
     </div>
 
-    <h2>Vzhľad</h2>
+    <h2 data-i18n="settings.appearance"></h2>
     <div class="group">
-      <div class="opt">Téma<div class="seg" id="theme"><button data-theme="" class="on">Systém</button><button data-theme="light">Svetlá</button><button data-theme="dark">Tmavá</button></div></div>
-      <div class="opt">Jazyk<select><option selected>Slovenčina</option><option>English</option><option>Čeština</option></select></div>
-      <div class="opt">Zobrazovať odmietnuté udalosti<span class="switch on"></span></div>
-      <div class="opt"><span>Odpočet v lište<small>Text vedľa ikonky (macOS)</small></span><span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.theme"></span><div class="seg" id="theme"><button data-theme="" class="on" data-i18n="settings.theme_system"></button><button data-theme="light" data-i18n="settings.theme_light"></button><button data-theme="dark" data-i18n="settings.theme_dark"></button></div></div>
+      <div class="opt"><span data-i18n="settings.language"></span><select id="language"></select></div>
+      <div class="opt"><span><span data-i18n="settings.week_tab"></span><small data-i18n="settings.week_tab_desc"></small></span><span class="switch on" id="week-toggle"></span></div>
+      <div class="opt"><span data-i18n="settings.show_declined"></span><span class="switch on"></span></div>
+      <div class="opt"><span><span data-i18n="settings.tray_countdown"></span><small data-i18n="settings.tray_countdown_desc"></small></span><span class="switch on"></span></div>
     </div>
 
-    <h2>Všeobecné</h2>
+    <h2 data-i18n="settings.general"></h2>
     <div class="group">
-      <div class="opt">Spustiť po prihlásení<span class="switch on"></span></div>
-      <div class="opt">Synchronizovať každých
-        <select><option selected>1 min</option><option>5 min</option><option>15 min</option></select></div>
+      <div class="opt"><span data-i18n="settings.autostart"></span><span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.sync_every"></span><select data-minutes="1,5,15" data-selected="1"></select></div>
     </div>
 
-    <div class="about"><b>do-not-forget</b><br>verzia 0.1.0-dev<br>
+    <div class="about"><b>do-not-forget</b><br><span id="version"></span><br>
       <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget">github.com/mkelcik/do-not-forget</button></div>
   </div>
 </section>
 
 <script type="module">
 import { Events, Browser } from "/wails/runtime.js";
+import { t, i18n, onLanguage, setLanguage } from "/i18n.js";
 
 // Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
 let events = [], synced = null;
@@ -255,24 +259,31 @@ const at = (day, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() + da
 const hidden = new Set();
 let day = 0, open = null; // open: id of the expanded event
 
-const hm = (d) => d.toLocaleTimeString("sk", { hour: "2-digit", minute: "2-digit" });
-const dur = (e) => { const m = Math.round((e.end - e.start) / 60000); return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? " " + (m % 60) + " min" : ""}` : `${m} min`; };
-const until = (d) => { const m = Math.round((d - Date.now()) / 60000); return m < 60 ? `o ${m} min` : `o ${Math.floor(m / 60)} h ${m % 60} min`; };
+const hm = (d) => d.toLocaleTimeString(i18n.lang, { hour: "2-digit", minute: "2-digit" });
+const dur = (e) => {
+  const m = Math.round((e.end - e.start) / 60000), h = Math.floor(m / 60);
+  return m < 60 ? t("dur.min", { m }) : m % 60 ? t("dur.hmin", { h, m: m % 60 }) : t("dur.h", { h });
+};
+const until = (d) => {
+  const m = Math.round((d - Date.now()) / 60000);
+  return m < 60 ? t("in.min", { m }) : t("in.hmin", { h: Math.floor(m / 60), m: m % 60 });
+};
 const svc = (l) => l.includes("zoom") ? "Zoom" : l.includes("teams") ? "Teams" : "Meet";
 const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
 const visible = () => events.filter((e) => !hidden.has(e.calendar));
-const rsvp = (e) => `<div class="rsvp">${[["yes", "Áno"], ["maybe", "Možno"], ["no", "Nie"]].map(([r, l]) =>
-  `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${l}</button>`).join("")}</div>`;
-const ago = (d) => { const m = Math.round((Date.now() - d) / 60000); return m < 1 ? "práve teraz" : `pred ${m} min`; };
+const rsvp = (e) => `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
+  `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>`;
+const agoMin = (m) => m < 1 ? t("ago.now") : t("ago.min", { m });
+const ago = (d) => agoMin(Math.round((Date.now() - d) / 60000));
 const initial = (n) => (n || "?").charAt(0).toUpperCase();
 const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function render() {
   const now = new Date();
-  document.getElementById("today").textContent = now.toLocaleDateString("sk", { weekday: "long", day: "numeric", month: "long" });
+  document.getElementById("today").textContent = now.toLocaleDateString(i18n.lang, { weekday: "long", day: "numeric", month: "long" });
   const todayLeft = visible().filter((e) => sameDay(e.start, 0) && !e.allDay && e.response !== "no" && e.end > now);
-  document.getElementById("summary").textContent = `Dnes ešte ${todayLeft.length} udalostí`;
-  document.getElementById("sync").textContent = synced ? `Synchronizované ${ago(synced)}` : "Načítavam…";
+  document.getElementById("summary").textContent = t("header.left", { count: todayLeft.length });
+  document.getElementById("sync").textContent = synced ? t("sync.done", { ago: ago(synced) }) : t("sync.loading");
 
   const calendars = new Map(events.map((e) => [e.calendar, e.color]));
   document.getElementById("chips").innerHTML = [...calendars].map(([name, color]) =>
@@ -285,20 +296,36 @@ function render() {
     const running = next.start <= now;
     const pct = running ? (now - next.start) / (next.end - next.start) * 100 : 0;
     hero.innerHTML = `<div class="hero" style="--c:${next.color}">
-      <div class="when">${running ? "Prebieha · končí " + hm(next.end) : "Ďalej · " + until(next.start)}</div>
+      <div class="when">${running ? t("hero.running", { time: hm(next.end) }) : t("hero.next", { in: until(next.start) })}</div>
       <div class="title">${esc(next.title)}</div>
       <div class="meta">${hm(next.start)} – ${hm(next.end)} · ${dur(next)}${next.location ? " · " + esc(next.location) : ""}</div>
       ${running ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ""}
-      ${next.response === "pending" ? `<div class="ask">Zúčastníš sa? ${rsvp(next)}</div>` : ""}
-      ${next.link ? `<div class="row"><span class="meta">${(next.attendees || []).length} účastníkov</span><button class="join" data-url="${esc(next.link)}">Pripojiť cez ${svc(next.link)}</button></div>` : ""}
+      ${next.response === "pending" ? `<div class="ask">${t("rsvp.question")} ${rsvp(next)}</div>` : ""}
+      ${next.link ? `<div class="row"><span class="meta">${t("hero.attendees", { count: (next.attendees || []).length })}</span><button class="join" data-url="${esc(next.link)}">${t("join.via", { service: svc(next.link) })}</button></div>` : ""}
     </div>`;
   }
 
-  // List
-  const list = visible().filter((e) => sameDay(e.start, day)).sort((a, b) => a.start - b.start);
+  // List: one day, or the next 7 days with a header per day (empty days skipped).
+  let html;
+  if (day === 7) {
+    html = [...Array(7).keys()].map((n) => { const h = dayHTML(n, now); return h && `<div class="day-head">${dayName(n)}</div>${h}`; })
+      .join("") || `<div class="empty">${t("list.free_week")}</div>`;
+  } else {
+    html = dayHTML(day, now) || `<div class="empty">${t("list.free_day")}</div>`;
+  }
+  document.getElementById("list").innerHTML = html;
+}
+
+const dayName = (n) => n === 0 ? t("day.today") : n === 1 ? t("day.tomorrow")
+  : at(n, 0).toLocaleDateString(i18n.lang, { weekday: "long", day: "numeric", month: "numeric" });
+
+// dayHTML renders day n (0 = today); "" when there's nothing that day.
+function dayHTML(n, now) {
+  const list = visible().filter((e) => sameDay(e.start, n)).sort((a, b) => a.start - b.start);
+  if (!list.length) return "";
   const timed = list.filter((e) => !e.allDay);
   let html = list.filter((e) => e.allDay).map((e) =>
-    `<div class="allday" style="--c:${e.color}">🎂 ${esc(e.title)}</div>`).join("");
+    `<div class="allday" style="--c:${e.color}">📅 ${esc(e.title)}</div>`).join("");
   // Overlapping events form one cluster; clusters of 2+ render as a conflict group.
   // Declined events never conflict: they sit on their own without breaking the active cluster.
   const clusters = [];
@@ -308,15 +335,15 @@ function render() {
     if (active && e.start < active.end) { active.items.push(e); if (e.end > active.end) active.end = e.end; }
     else { active = { start: e.start, end: e.end, items: [e] }; clusters.push(active); }
   }
-  let nowShown = day !== 0;
+  let nowShown = n !== 0;
   for (const c of clusters) {
     if (!nowShown && c.start > now) { html += `<div class="now">${hm(now)}</div>`; nowShown = true; }
     const rows = c.items.map(row).join("");
     html += c.items.length < 2 ? rows : `<div class="conflict ${c.end < now ? "past" : ""}">
-      <div class="conflict-head">⚠ Kolízia · ${hm(c.start)} – ${hm(c.end)}</div>${rows}</div>`;
+      <div class="conflict-head">${t("list.conflict", { from: hm(c.start), to: hm(c.end) })}</div>${rows}</div>`;
   }
   if (!nowShown) html += `<div class="now">${hm(now)}</div>`;
-  document.getElementById("list").innerHTML = list.length ? html : `<div class="empty">Voľný deň 🎉</div>`;
+  return html;
 }
 
 function row(e) {
@@ -326,8 +353,8 @@ function row(e) {
 
 function rowHTML(e) {
   const now = new Date();
-  const tag = e.response === "pending" ? `<span class="tag pending">Neodpovedané</span>`
-    : e.response === "maybe" ? `<span class="tag maybe">Možno</span>` : "";
+  const tag = e.response === "pending" ? `<span class="tag pending">${t("tag.pending")}</span>`
+    : e.response === "maybe" ? `<span class="tag maybe">${t("tag.maybe")}</span>` : "";
   return `<div class="ev ${e.end < now ? "past" : ""} ${e.response ? "rsvp-" + e.response : ""}" data-id="${esc(e.id)}" style="--c:${e.color}">
       <div class="time">${hm(e.start)}<small>${hm(e.end)}</small></div>
       <div class="bar"></div>
@@ -340,17 +367,34 @@ function rowHTML(e) {
 function detail(e) {
   const people = (e.attendees || []).map((p) =>
     `<span class="person ${esc(p.status)}"><b>${esc(initial(p.name))}</b>${esc(p.name || "")}</span>`).join("");
-  const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">Pripojiť sa</button>` : "") +
-    (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">Otvoriť v kalendári</button>` : "");
+  const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">${t("join")}</button>` : "") +
+    (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : "");
   const body = [
-    e.link && `<div><div class="k">Odkaz</div>${esc(e.link)}</div>`,
-    e.description && `<div><div class="k">Popis</div>${esc(e.description)}</div>`,
-    e.response && `<div><div class="k">Zúčastníš sa?</div>${rsvp(e)}</div>`,
-    people && `<div><div class="k">Účastníci</div><div class="people">${people}</div></div>`,
+    e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
+    e.description && `<div><div class="k">${t("detail.description")}</div>${esc(e.description)}</div>`,
+    e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp(e)}</div>`,
+    people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
     actions && `<div class="actions">${actions}</div>`,
   ].filter(Boolean).join("");
   return body && `<div class="detail">${body}</div>`; // nothing to show → just the outlined row
 }
+
+// Settings texts that need values: sync time, minute options, the language list.
+function fillSettings() {
+  document.querySelectorAll(".synced").forEach((el) => {
+    el.textContent = t("settings.synced", { provider: el.dataset.provider, ago: agoMin(+el.dataset.min) });
+  });
+  document.querySelectorAll("select[data-minutes]").forEach((sel) => {
+    const cur = sel.value || sel.dataset.selected;
+    sel.innerHTML = sel.dataset.minutes.split(",").map((m) =>
+      `<option value="${m}" ${m === cur ? "selected" : ""}>${t("dur.min", { m })}</option>`).join("");
+  });
+  document.getElementById("language").innerHTML = [{ code: "", name: t("settings.language_system") }, ...i18n.languages]
+    .map((l) => `<option value="${esc(l.code)}" ${l.code === i18n.setting ? "selected" : ""}>${esc(l.name)}</option>`).join("");
+  document.getElementById("version").textContent = t("settings.version", { version: i18n.version });
+}
+document.getElementById("language").addEventListener("change", (ev) => setLanguage(ev.target.value));
+onLanguage(() => { fillSettings(); render(); });
 
 document.addEventListener("click", (ev) => {
   const t = ev.target;
@@ -365,7 +409,14 @@ document.addEventListener("click", (ev) => {
   if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
   if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
   const sw = t.closest(".switch");
-  if (sw) return sw.classList.toggle("on"); // mock: not persisted yet
+  if (sw) {
+    const on = sw.classList.toggle("on"); // mock: not persisted yet
+    if (sw.id === "week-toggle") {
+      document.getElementById("week-tab").hidden = !on;
+      if (!on && day === 7) document.querySelector('.tabs button[data-day="0"]').click();
+    }
+    return;
+  }
   const theme = t.closest("#theme button");
   if (theme) {
     document.querySelectorAll("#theme button").forEach((b) => b.classList.toggle("on", b === theme));

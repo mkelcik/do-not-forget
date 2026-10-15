@@ -20,5 +20,7 @@ jobs:
           cache: true
       - name: Install GTK4 / WebKitGTK headers (Wails uses cgo on Linux)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
+      - name: Check translations (frontend/i18n/*.json)
+        run: go test -run 'TestTranslationFiles|TestTranslator' -v .
       - run: make tools
       - run: make ci

@@ -15,6 +15,8 @@ type Config struct {
 	NotifyMinutes int `json:"notifyMinutes"`
 	// FullscreenAlert covers the screen when a meeting starts, for when a notification gets missed.
 	FullscreenAlert bool `json:"fullscreenAlert"`
+	// Language is a BCP 47 tag from frontend/i18n, or "" to follow the system.
+	Language string `json:"language"`
 	// MutedUntil silences reminders and alerts until then; zero means not muted.
 	MutedUntil time.Time `json:"mutedUntil"`
 }

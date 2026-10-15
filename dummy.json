@@ -27,6 +27,14 @@
     { "calendar": "Práca", "title": "Retro", "day": 1, "at": "10:00", "dur": "1h", "link": "https://meet.google.com/ret-roro-ret" },
     { "calendar": "Práca", "title": "Demo pre klienta", "day": 1, "at": "14:00", "dur": "1h", "response": "pending",
       "link": "https://teams.microsoft.com/l/meetup-join/abc" },
-    { "calendar": "Súkromné", "title": "Večera s Katkou", "day": 1, "at": "19:30", "dur": "1h30m", "location": "Bistro Fach" }
+    { "calendar": "Súkromné", "title": "Večera s Katkou", "day": 1, "at": "19:30", "dur": "1h30m", "location": "Bistro Fach" },
+    { "calendar": "Práca", "title": "Architektonický review", "day": 2, "at": "11:00", "dur": "1h30m", "response": "pending",
+      "link": "https://meet.google.com/arc-hrev-iew", "organizer": "Peter Horváth" },
+    { "calendar": "Súkromné", "title": "Servis auta", "day": 2, "at": "16:00", "dur": "1h", "location": "Autoservis Rača" },
+    { "calendar": "Práca", "title": "Sprint review", "day": 3, "at": "13:00", "dur": "1h", "link": "https://meet.google.com/spr-intr-evw" },
+    { "calendar": "Práca", "title": "Workshop s klientom", "day": 3, "at": "13:30", "dur": "2h", "location": "Kancelária klienta" },
+    { "calendar": "Súkromné", "title": "Výlet na Kamzík", "day": 5, "allDay": true },
+    { "calendar": "Práca", "title": "Plánovanie Q4", "day": 6, "at": "09:30", "dur": "2h", "response": "maybe",
+      "link": "https://teams.microsoft.com/l/meetup-join/q4" }
   ]
 }

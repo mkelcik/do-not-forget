@@ -33,7 +33,7 @@ func notificationText(e Event, now time.Time) (title, body string) {
 		parts = append(parts, e.Location)
 	}
 	if e.Response == "pending" {
-		parts = append(parts, "neodpovedané")
+		parts = append(parts, T("notify.unanswered"))
 	}
 	return title, strings.Join(parts, " · ")
 }
@@ -44,10 +44,10 @@ func muteLabel(until, now time.Time) string {
 	case !now.Before(until):
 		return ""
 	case !until.Before(muteForever):
-		return "Stlmené, kým ich nezapneš"
+		return T("mute.forever")
 	case until.Hour() == 0 && until.Minute() == 0:
-		return "Stlmené do konca dňa"
+		return T("mute.end_of_day")
 	default:
-		return "Stlmené do " + until.Format("15:04")
+		return T("mute.until", "time", until.Format("15:04"))
 	}
 }

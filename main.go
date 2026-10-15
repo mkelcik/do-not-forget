@@ -34,6 +34,10 @@ func main() {
 		_ = os.Setenv("GDK_BACKEND", "x11")
 	}
 	frontend, _ := fs.Sub(assets, "frontend")
+	langs, err := loadCatalog(frontend)
+	if err != nil {
+		log.Fatalf("translations: %v", err)
+	}
 	notifier := notifications.New()
 	app := application.New(application.Options{
 		Name:     "do-not-forget",
@@ -46,6 +50,8 @@ func main() {
 	})
 
 	cfg := loadConfig()
+	webLangs := []string{} // navigator.languages, reported by the popup; the OS locale on macOS/Windows
+	tr.Store(langs.translator(langs.resolve(append([]string{cfg.Language}, systemLanguages()...)...)))
 	var (
 		mu         sync.Mutex // guards cfg and events
 		events     []Event
@@ -96,7 +102,7 @@ func main() {
 		next := nextEvent(events, time.Now())
 		muted := muteLabel(cfg.MutedUntil, time.Now())
 		mu.Unlock()
-		title, sub := "Žiadne ďalšie meetingy", ""
+		title, sub := T("tray.none"), ""
 		if next != nil {
 			title = next.Title
 			sub = fmt.Sprintf(`%s · %s – %s · <span style="color:%s">●</span> %s`,
@@ -115,7 +121,7 @@ func main() {
 		now := time.Now()
 		y, m, d := now.Date()
 		today := time.Date(y, m, d, 0, 0, 0, 0, now.Location())
-		evs := fetchAll(context.Background(), sources, today, today.AddDate(0, 0, 2))
+		evs := fetchAll(context.Background(), sources, today, today.AddDate(0, 0, 7)) // the 7-day tab
 		mu.Lock()
 		events = evs
 		mu.Unlock()
@@ -151,11 +157,16 @@ func main() {
 			refresh()
 		}
 	}()
-	// Reminders: "meeting" carries a Join button, plain clicks open the popup.
-	_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
-		ID:      "meeting",
-		Actions: []notifications.NotificationAction{{ID: "join", Title: "Pripojiť sa"}},
-	})
+	// Notification buttons; re-registered when the language changes.
+	registerCategories := func() {
+		_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
+			ID: "meeting", Actions: []notifications.NotificationAction{{ID: "join", Title: T("join")}},
+		})
+		_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
+			ID: "update", Actions: []notifications.NotificationAction{{ID: "update", Title: T("update.action")}},
+		})
+	}
+	registerCategories()
 	notifier.OnNotificationResponse(func(r notifications.NotificationResult) {
 		if r.Error != nil {
 			return
@@ -264,22 +275,60 @@ func main() {
 		menu := app.NewMenu()
 		if muted {
 			menu.Add("🔕 " + label).SetEnabled(false)
-			menu.Add("🔔 Zapnúť notifikácie").OnClick(func(*application.Context) { mute(time.Time{}) })
+			menu.Add(T("menu.unmute")).OnClick(func(*application.Context) { mute(time.Time{}) })
 		} else {
 			// Flat items: Plasma's tray submenus clip the label under the arrow.
-			menu.Add("🔕 Stlmiť na 1 hodinu").OnClick(func(*application.Context) { mute(time.Now().Add(time.Hour)) })
-			menu.Add("🔕 Stlmiť do konca dňa").OnClick(func(*application.Context) {
+			menu.Add(T("menu.mute_hour")).OnClick(func(*application.Context) { mute(time.Now().Add(time.Hour)) })
+			menu.Add(T("menu.mute_day")).OnClick(func(*application.Context) {
 				y, m, d := time.Now().Date()
 				mute(time.Date(y, m, d+1, 0, 0, 0, 0, time.Local))
 			})
-			menu.Add("🔕 Stlmiť, kým nezapnem").OnClick(func(*application.Context) { mute(muteForever) })
+			menu.Add(T("menu.mute_forever")).OnClick(func(*application.Context) { mute(muteForever) })
 		}
 		menu.AddSeparator()
-		menu.Add("Koniec").OnClick(func(*application.Context) { app.Quit() })
+		menu.Add(T("menu.quit")).OnClick(func(*application.Context) { app.Quit() })
 		tray.SetMenu(menu)
 		updateTray()
 	}
 	applyMute()
+
+	// Language: the popup says hello with navigator.languages and can pick one in Settings.
+	// Switching swaps the translator and redraws everything that has text, no restart.
+	sendLanguage := func() {
+		mu.Lock()
+		setting := cfg.Language
+		mu.Unlock()
+		t := tr.Load()
+		app.Event.Emit("i18n", map[string]any{
+			"lang": t.code, "strings": t.strings, "languages": langs.languages(), "setting": setting,
+			"version": version, // for Settings › About
+		})
+	}
+	applyLanguage := func() {
+		mu.Lock()
+		prefs := append(append([]string{cfg.Language}, webLangs...), systemLanguages()...)
+		mu.Unlock()
+		tr.Store(langs.translator(langs.resolve(prefs...)))
+		registerCategories()
+		applyMute() // rebuilds the tray menu and tooltip
+		sendLanguage()
+	}
+	app.Event.On("i18n:hello", func(ev *application.CustomEvent) {
+		var l []string
+		if b, err := json.Marshal(ev.Data); err == nil {
+			_ = json.Unmarshal(b, &l)
+		}
+		mu.Lock()
+		webLangs = l
+		mu.Unlock()
+		applyLanguage()
+	})
+	app.Event.On("i18n:set", func(ev *application.CustomEvent) {
+		code, _ := ev.Data.(string)
+		saveConfig(func(c *Config) { c.Language = code })
+		applyLanguage()
+	})
+
 	startUpdater(app, notifier, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
@@ -322,14 +371,14 @@ func main() {
 	}
 }
 
-// untilText is the countdown shown in the tray: "o 12 min", "o 1 h 5 min", "prebieha do 17:57".
+// untilText is the countdown shown in the tray: "in 12 min", "in 1 h 5 min", "in progress until 17:57".
 func untilText(e *Event, now time.Time) string {
 	if !e.Start.After(now) {
-		return "prebieha do " + e.End.Format("15:04")
+		return T("tray.running", "time", e.End.Format("15:04"))
 	}
 	m := int(e.Start.Sub(now).Round(time.Minute).Minutes())
 	if m < 60 {
-		return fmt.Sprintf("o %d min", m)
+		return T("in.min", "m", m)
 	}
-	return fmt.Sprintf("o %d h %d min", m/60, m%60)
+	return T("in.hmin", "h", m/60, "m", m%60)
 }

@@ -45,11 +45,6 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 		log.Printf("updater: %v", err)
 		return
 	}
-	_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
-		ID:      "update",
-		Actions: []notifications.NotificationAction{{ID: "update", Title: "Aktualizovať"}},
-	})
-
 	go func() {
 		for time.Sleep(time.Minute); ; time.Sleep(6 * time.Hour) {
 			switch app.Updater.State() {
@@ -68,13 +63,13 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			if rel == nil {
 				continue
 			}
-			body := "Aktualizácia nainštaluje novú verziu a reštartuje appku."
+			body := T("update.body_install")
 			if !canSelfUpdate() {
-				body = "Aktualizovať otvorí stránku na stiahnutie novej verzie."
+				body = T("update.body_download")
 			}
 			_ = notifier.SendNotificationWithActions(notifications.NotificationOptions{
 				ID:         "update",
-				Title:      "Je dostupná nová verzia " + rel.Version,
+				Title:      T("update.title", "version", rel.Version),
 				Body:       body,
 				CategoryID: "update",
 				Data:       map[string]any{"kind": "update"},
@@ -104,8 +99,8 @@ func installUpdate(app *application.App, notifier *notifications.NotificationSer
 	if err != nil && !errors.Is(err, updater.ErrDownloadInProgress) {
 		log.Printf("update: %v", err) // the full chain is for the log, not the toast
 		_ = notifier.SendNotification(notifications.NotificationOptions{
-			ID: "update-failed", Title: "Aktualizácia zlyhala",
-			Body: "Skúsim to znova pri ďalšej kontrole. Podrobnosti sú v logu.",
+			ID: "update-failed", Title: T("update.failed_title"),
+			Body: T("update.failed_body"),
 		})
 	}
 }
