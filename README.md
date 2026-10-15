@@ -26,7 +26,7 @@ Download the archive for your system from [Releases](https://github.com/mkelcik/
 | --- | --- | --- |
 | Linux x86-64 / ARM64 | `do-not-forget_linux_*.tar.gz` | Needs GTK 4 and WebKitGTK 6 (`sudo apt install libgtk-4-1 libwebkitgtk-6.0-4`). GNOME needs the AppIndicator extension for tray icons. |
 | macOS (Apple Silicon) | `do-not-forget_darwin_arm64.zip` | Not notarized yet: right-click the app → Open on first launch. |
-| Windows x86-64 | `do-not-forget_windows_amd64.zip` | SmartScreen may warn about an unknown publisher. |
+| Windows x86-64 / ARM64 | `do-not-forget_windows_*.zip` | SmartScreen may warn about an unknown publisher. |
 
 ## Development
 

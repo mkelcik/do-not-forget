@@ -34,6 +34,7 @@ jobs:
           - { os: ubuntu-24.04-arm }  # linux/arm64
           - { os: macos-15 }          # darwin/arm64
           - { os: windows-2025 }      # windows/amd64
+          - { os: windows-2025, goarch: arm64 } # windows/arm64: pure Go on Windows, cross-compiled
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -48,10 +49,11 @@ jobs:
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOARCH: ${{ matrix.goarch }} # empty = the runner's own arch
         run: VERSION="${GITHUB_REF_NAME#v}" ./scripts/dist.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: dist-${{ matrix.os }}
+          name: dist-${{ matrix.os }}-${{ matrix.goarch || 'native' }}
           path: dist/*
 
   publish:
