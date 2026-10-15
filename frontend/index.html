@@ -129,6 +129,8 @@ body.settings-open #settings { display: flex; }
 .opt select:focus { outline: none; border-color: var(--accent); }
 .cal input { appearance: none; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--muted);
   display: grid; place-items: center; cursor: pointer; flex: none; }
+.cal input:focus-visible, .switch:focus-visible, button:focus-visible, .opt select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; }
 .cal input:checked { background: var(--accent); border-color: var(--accent); }
 .cal input:checked::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
   transform: translateY(-1px) rotate(45deg); }
@@ -262,6 +264,7 @@ const visible = () => events.filter((e) => !hidden.has(e.calendar));
 const rsvp = (e) => `<div class="rsvp">${[["yes", "Áno"], ["maybe", "Možno"], ["no", "Nie"]].map(([r, l]) =>
   `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${l}</button>`).join("")}</div>`;
 const ago = (d) => { const m = Math.round((Date.now() - d) / 60000); return m < 1 ? "práve teraz" : `pred ${m} min`; };
+const initial = (n) => (n || "?").charAt(0).toUpperCase();
 const esc = (s) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function render() {
@@ -297,13 +300,13 @@ function render() {
   let html = list.filter((e) => e.allDay).map((e) =>
     `<div class="allday" style="--c:${e.color}">🎂 ${esc(e.title)}</div>`).join("");
   // Overlapping events form one cluster; clusters of 2+ render as a conflict group.
+  // Declined events never conflict: they sit on their own without breaking the active cluster.
   const clusters = [];
+  let active = null;
   for (const e of timed) {
-    const c = clusters.at(-1);
-    // Declined events never cause a conflict.
-    if (c && !c.declined && e.response !== "no" && e.start < c.end) { c.items.push(e); if (e.end > c.end) c.end = e.end; }
-    else if (e.response === "no") clusters.push({ start: e.start, end: e.end, items: [e], declined: true });
-    else clusters.push({ start: e.start, end: e.end, items: [e] });
+    if (e.response === "no") { clusters.push({ start: e.start, end: e.end, items: [e] }); continue; }
+    if (active && e.start < active.end) { active.items.push(e); if (e.end > active.end) active.end = e.end; }
+    else { active = { start: e.start, end: e.end, items: [e] }; clusters.push(active); }
   }
   let nowShown = day !== 0;
   for (const c of clusters) {
@@ -336,7 +339,7 @@ function rowHTML(e) {
 
 function detail(e) {
   const people = (e.attendees || []).map((p) =>
-    `<span class="person ${esc(p.status)}"><b>${esc(p.name[0])}</b>${esc(p.name)}</span>`).join("");
+    `<span class="person ${esc(p.status)}"><b>${esc(initial(p.name))}</b>${esc(p.name || "")}</span>`).join("");
   const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">Pripojiť sa</button>` : "") +
     (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">Otvoriť v kalendári</button>` : "");
   const body = [
@@ -386,7 +389,7 @@ document.addEventListener("click", (ev) => {
 });
 
 Events.On("events", ({ data }) => {
-  events = data.events.map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  events = (data.events ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
   synced = new Date(data.synced);
   render();
 });

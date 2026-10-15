@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -22,10 +25,11 @@ const (
 )
 
 // startUpdater checks GitHub Releases at startup and every 6 hours and announces a new
-// version with a notification; clicking it downloads, verifies (SHA256SUMS) and restarts.
+// version with a notification; its Aktualizovať button downloads, verifies (SHA256SUMS)
+// and restarts. The reminder repeats every check until updated, and waits out a mute.
 // Dev builds never check, so `go run` can't get replaced by a release binary.
 // ponytail: no release signing yet; set updater.Config.PublicKey once CI signs releases.
-func startUpdater(app *application.App, notifier *notifications.NotificationService) {
+func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool) {
 	if version == "dev" {
 		return
 	}
@@ -42,21 +46,26 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 		Actions: []notifications.NotificationAction{{ID: "update", Title: "Aktualizovať"}},
 	})
 
-	announced := ""
 	go func() {
 		for time.Sleep(time.Minute); ; time.Sleep(6 * time.Hour) {
+			switch app.Updater.State() {
+			case updater.StateDownloading, updater.StateVerifying, updater.StateInstalling, updater.StateReady:
+				continue // an install is in flight; a Check now would clobber its state
+			}
+			if muted() {
+				continue
+			}
 			rel, err := app.Updater.Check(context.Background())
 			if err != nil {
 				log.Printf("update check: %v", err)
 				continue
 			}
-			if rel == nil || rel.Version == announced {
+			if rel == nil {
 				continue
 			}
-			announced = rel.Version
-			body := "Klikni pre aktualizáciu a reštart."
+			body := "Aktualizácia nainštaluje novú verziu a reštartuje appku."
 			if !canSelfUpdate() {
-				body = "Klikni pre stiahnutie novej verzie."
+				body = "Aktualizovať otvorí stránku na stiahnutie novej verzie."
 			}
 			_ = notifier.SendNotificationWithActions(notifications.NotificationOptions{
 				ID:         "update",
@@ -69,8 +78,14 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 	}()
 }
 
-// installUpdate runs when the update notification is clicked.
+var installing sync.Mutex
+
+// installUpdate runs when the update notification's button is pressed.
 func installUpdate(app *application.App, notifier *notifications.NotificationService) {
+	if !installing.TryLock() {
+		return // a second click while the first install is still running
+	}
+	defer installing.Unlock()
 	if !canSelfUpdate() {
 		// Installed by a package manager (e.g. .deb in /usr/bin): send them to the release page.
 		_ = app.Browser.OpenURL(releasesURL)
@@ -81,19 +96,25 @@ func installUpdate(app *application.App, notifier *notifications.NotificationSer
 	if err == nil {
 		err = app.Updater.Restart(ctx) // exits this process on success
 	}
-	if err != nil {
-		log.Printf("update: %v", err)
+	if err != nil && !errors.Is(err, updater.ErrDownloadInProgress) {
+		log.Printf("update: %v", err) // the full chain is for the log, not the toast
 		_ = notifier.SendNotification(notifications.NotificationOptions{
-			ID: "update-failed", Title: "Aktualizácia zlyhala", Body: err.Error(),
+			ID: "update-failed", Title: "Aktualizácia zlyhala",
+			Body: "Skúsim to znova pri ďalšej kontrole. Podrobnosti sú v logu.",
 		})
 	}
 }
 
 // canSelfUpdate reports whether we may replace our own binary (not owned by root/a package).
+// Inside an AppImage the binary sits on a read-only mount; the updater swaps $APPIMAGE itself.
 func canSelfUpdate() bool {
 	exe, err := os.Executable()
 	if err != nil {
 		return false
+	}
+	if img, mount := os.Getenv("APPIMAGE"), os.Getenv("APPDIR"); img != "" && mount != "" &&
+		strings.HasPrefix(exe, filepath.Clean(mount)+string(filepath.Separator)) {
+		exe = img
 	}
 	f, err := os.CreateTemp(filepath.Dir(exe), ".update-probe-*")
 	if err != nil {

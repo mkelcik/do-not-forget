@@ -91,8 +91,8 @@ function render() {
       .map(([r, l]) => `<button data-respond="${r}" class="${e.response === r ? "on" : ""}">${l}</button>`).join("")}</div></div>`,
     e.description && `<div><div class="k">Popis</div><div class="desc">${linkify(e.description)}</div></div>`,
     people.length && `<div><div class="k">Účastníci · ${people.length}</div><div class="people">${people.map((p) =>
-      `<div class="person ${esc(p.status)}" title="${esc(label[p.status] || "")}"><b>${esc(p.name[0])}</b>
-        <span>${esc(p.name)}${p.name === e.organizer ? " <small>organizátor</small>" : ""}${p.self ? " <small>(ty)</small>" : ""}</span></div>`).join("")}
+      `<div class="person ${esc(p.status)}" title="${esc(label[p.status] || "")}"><b>${esc((p.name || "?").charAt(0).toUpperCase())}</b>
+        <span>${esc(p.name || "")}${p.name && p.name === e.organizer ? " <small>organizátor</small>" : ""}${p.self ? " <small>(ty)</small>" : ""}</span></div>`).join("")}
       </div><div class="summary">${counts}</div></div>`,
     others && `<div><div class="k">Zároveň začína</div><div class="more">${others}</div></div>`,
   ].filter(Boolean).join("");
@@ -118,7 +118,7 @@ function render() {
 }
 
 Events.On("alert", ({ data }) => {
-  events = data.map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  events = (data ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
   render();
 });
 document.addEventListener("click", (ev) => {

@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-// dueNotifications returns events starting within `lead` that haven't been announced yet,
-// and marks them in `sent`. Keyed by ID+start so a rescheduled meeting notifies again.
-// Declined, all-day and already-started events are skipped.
-func dueNotifications(events []Event, now time.Time, lead time.Duration, sent map[string]bool) []Event {
+// dueNotifications returns events starting between now-grace and now+lead that haven't been
+// announced yet, and marks them in `sent`. The grace lets a start alert still fire when the
+// laptop wakes just after a meeting began. Declined and all-day events are skipped.
+func dueNotifications(events []Event, now time.Time, lead, grace time.Duration, sent map[string]bool) []Event {
 	var due []Event
 	for _, e := range events {
-		key := e.ID + "@" + e.Start.Format(time.RFC3339)
-		if e.AllDay || e.Response == "no" || sent[key] || !e.Start.After(now) || e.Start.Sub(now) > lead {
+		key := sentKey(e)
+		if e.AllDay || e.Response == "no" || sent[key] || now.Sub(e.Start) > grace || e.Start.Sub(now) > lead {
 			continue
 		}
 		sent[key] = true
@@ -21,6 +21,9 @@ func dueNotifications(events []Event, now time.Time, lead time.Duration, sent ma
 	}
 	return due
 }
+
+// sentKey is ID+start, so a rescheduled meeting notifies again.
+func sentKey(e Event) string { return e.ID + "@" + e.Start.Format(time.RFC3339) }
 
 // notificationText is the title and body of a meeting reminder.
 func notificationText(e Event, now time.Time) (title, body string) {

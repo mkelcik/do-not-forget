@@ -19,18 +19,30 @@ func TestDueNotifications(t *testing.T) {
 	}
 	sent := map[string]bool{}
 
-	if due := dueNotifications(events, now, 5*time.Minute, sent); len(due) != 1 || due[0].ID != "soon" {
+	if due := dueNotifications(events, now, 5*time.Minute, 0, sent); len(due) != 1 || due[0].ID != "soon" {
 		t.Fatalf("first pass: %+v", due)
 	}
-	if due := dueNotifications(events, now.Add(time.Minute), 5*time.Minute, sent); len(due) != 0 {
+	if due := dueNotifications(events, now.Add(time.Minute), 5*time.Minute, 0, sent); len(due) != 0 {
 		t.Fatalf("notified twice: %+v", due)
 	}
-	if due := dueNotifications(events, now.Add(16*time.Minute), 5*time.Minute, sent); len(due) != 1 || due[0].ID != "later" {
+	if due := dueNotifications(events, now.Add(16*time.Minute), 5*time.Minute, 0, sent); len(due) != 1 || due[0].ID != "later" {
 		t.Fatalf("later: %+v", due)
 	}
+	// Already started: skipped without grace, caught within it (wake from sleep), once.
+	started := []Event{ev("woke", -90*time.Second, "")}
+	if due := dueNotifications(started, now, 15*time.Second, 0, sent); len(due) != 0 {
+		t.Fatalf("no grace: %+v", due)
+	}
+	if due := dueNotifications(started, now, 15*time.Second, 3*time.Minute, sent); len(due) != 1 {
+		t.Fatalf("grace: %+v", due)
+	}
+	if due := dueNotifications(started, now.Add(time.Minute), 15*time.Second, 3*time.Minute, sent); len(due) != 0 {
+		t.Fatalf("grace twice: %+v", due)
+	}
+
 	// Moved meeting = new start = new reminder.
 	events[0].Start = events[0].Start.Add(time.Hour)
-	if due := dueNotifications(events, now.Add(62*time.Minute), 5*time.Minute, sent); len(due) != 1 || due[0].ID != "soon" {
+	if due := dueNotifications(events, now.Add(62*time.Minute), 5*time.Minute, 0, sent); len(due) != 1 || due[0].ID != "soon" {
 		t.Fatalf("rescheduled: %+v", due)
 	}
 }

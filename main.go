@@ -51,12 +51,12 @@ func main() {
 		events     []Event
 		showWindow func()
 	)
+	// Change and write under one lock so concurrent saves can't interleave or lose a field.
 	saveConfig := func(change func(*Config)) {
 		mu.Lock()
+		defer mu.Unlock()
 		change(&cfg)
-		c := cfg
-		mu.Unlock()
-		if err := c.save(); err != nil {
+		if err := cfg.save(); err != nil {
 			log.Printf("save config: %v", err)
 		}
 	}
@@ -158,15 +158,16 @@ func main() {
 		if r.Error != nil {
 			return
 		}
-		if kind, _ := r.Response.UserInfo["kind"].(string); kind == "update" {
+		// Only explicit buttons act: on Linux closing a notification with X arrives as the
+		// default action too, so body clicks and dismissals can't be told apart.
+		switch r.Response.ActionIdentifier {
+		case "update":
 			go installUpdate(app, notifier)
-			return
+		case "join":
+			if link, _ := r.Response.UserInfo["link"].(string); link != "" {
+				_ = app.Browser.OpenURL(link)
+			}
 		}
-		if link, _ := r.Response.UserInfo["link"].(string); r.Response.ActionIdentifier == "join" && link != "" {
-			_ = app.Browser.OpenURL(link)
-			return
-		}
-		showWindow()
 	})
 	sent := map[string]bool{}
 	// Meeting-start alert: a separate frameless window, maximised over everything else.
@@ -192,8 +193,9 @@ func main() {
 			mu.Unlock()
 			return
 		}
-		// The ticker runs every 10s, so "starting within 15s" fires once, right at the start.
-		due := dueNotifications(events, time.Now(), 15*time.Second, alerted)
+		// The ticker runs every 10s, so "starting within 15s" fires once, right at the start;
+		// the 3 min grace still catches it after waking from sleep.
+		due := dueNotifications(events, time.Now(), 15*time.Second, 3*time.Minute, alerted)
 		mu.Unlock()
 		if len(due) > 0 {
 			showAlert(due)
@@ -218,7 +220,7 @@ func main() {
 			mu.Unlock()
 			return
 		}
-		due := dueNotifications(events, now, time.Duration(cfg.NotifyMinutes)*time.Minute, sent)
+		due := dueNotifications(events, now, time.Duration(cfg.NotifyMinutes)*time.Minute, 0, sent)
 		mu.Unlock()
 		for _, e := range due {
 			title, body := notificationText(e, now)
@@ -232,6 +234,9 @@ func main() {
 			}
 			if err != nil {
 				log.Printf("notify %s: %v", e.ID, err)
+				mu.Lock()
+				delete(sent, sentKey(e)) // retry on the next tick
+				mu.Unlock()
 			}
 		}
 	}
@@ -273,7 +278,11 @@ func main() {
 		updateTray()
 	}
 	applyMute()
-	startUpdater(app, notifier)
+	startUpdater(app, notifier, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return cfg.mutedAt(time.Now())
+	})
 
 	go func() { // tray countdown and reminders tick faster than the fetch
 		for ; ; time.Sleep(10 * time.Second) {

@@ -46,7 +46,7 @@ type Source interface {
 // fetchAll merges every source into one list sorted by start.
 // A failing source is logged and skipped so one broken account doesn't blank the rest.
 func fetchAll(ctx context.Context, sources []Source, from, to time.Time) []Event {
-	var all []Event
+	all := []Event{} // non-nil: the UI gets [] rather than null when there's nothing
 	for _, s := range sources {
 		evs, err := s.Events(ctx, from, to)
 		if err != nil {

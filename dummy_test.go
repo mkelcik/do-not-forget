@@ -16,6 +16,10 @@ func TestDummySourceAndMerge(t *testing.T) {
 		{"calendar":"W","title":"bday","allDay":true},
 		{"calendar":"W","title":"past","at":"-2h","dur":"30m"}]}`), 0o644)
 
+	if evs := fetchAll(context.Background(), nil, time.Now(), time.Now()); evs == nil {
+		t.Fatal("fetchAll with nothing must be [] not nil (UI expects an array)")
+	}
+
 	base := time.Date(2026, 10, 15, 12, 0, 30, 0, time.Local)
 	src := &dummySource{path: path, base: base}
 	evs := fetchAll(context.Background(), []Source{src}, base.Add(-time.Hour), base.AddDate(0, 0, 2))
