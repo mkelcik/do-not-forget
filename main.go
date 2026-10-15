@@ -158,6 +158,10 @@ func main() {
 		if r.Error != nil {
 			return
 		}
+		if kind, _ := r.Response.UserInfo["kind"].(string); kind == "update" {
+			go installUpdate(app, notifier)
+			return
+		}
 		if link, _ := r.Response.UserInfo["link"].(string); r.Response.ActionIdentifier == "join" && link != "" {
 			_ = app.Browser.OpenURL(link)
 			return
@@ -269,6 +273,7 @@ func main() {
 		updateTray()
 	}
 	applyMute()
+	startUpdater(app, notifier)
 
 	go func() { // tray countdown and reminders tick faster than the fetch
 		for ; ; time.Sleep(10 * time.Second) {

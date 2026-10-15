@@ -8,7 +8,10 @@
   --bg: #f7f7f8; --card: #fff; --text: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea;
   --accent: #0a84ff; --danger: #ff453a; --warn: #ff9f0a;
   --work: #0a84ff; --personal: #30d158;
+  color-scheme: light dark; /* native popups (select list, scrollbars) follow the theme */
 }
+:root[data-theme=light] { color-scheme: light; }
+:root[data-theme=dark] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme=light]) { --bg: #1c1c1e; --card: #2c2c2e; --text: #f2f2f7; --muted: #98989f; --line: #3a3a3c; }
 }
@@ -118,8 +121,17 @@ body.settings-open #settings { display: flex; }
 .group > * + * { border-top: 1px solid var(--line); }
 .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; min-height: 38px; }
 .opt small { display: block; color: var(--muted); font-size: 11px; }
-.opt select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line);
-  border-radius: 6px; padding: 3px 6px; }
+/* Own look for the closed select and checkboxes; WebKitGTK otherwise paints them in the GTK theme. */
+.opt select { appearance: none; font: inherit; font-size: 12px; color: var(--text); cursor: pointer;
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2398989f' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+  border: 1px solid var(--line); border-radius: 7px; padding: 4px 26px 4px 10px; }
+.opt select:hover { border-color: var(--muted); }
+.opt select:focus { outline: none; border-color: var(--accent); }
+.cal input { appearance: none; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--muted);
+  display: grid; place-items: center; cursor: pointer; flex: none; }
+.cal input:checked { background: var(--accent); border-color: var(--accent); }
+.cal input:checked::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg); }
 .switch { width: 32px; height: 18px; border-radius: 99px; background: var(--line); position: relative; flex: none; transition: background .15s; }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
   border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px #0004; }
@@ -138,7 +150,6 @@ body.settings-open #settings { display: flex; }
 .link-btn.danger { color: var(--danger); }
 .link-btn:hover { background: var(--line); }
 .cal { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 48px; font-size: 12px; }
-.cal input { accent-color: var(--accent); }
 .cal .name { flex: 1; }
 .cal .dot { width: 10px; height: 10px; }
 .add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
@@ -154,7 +165,7 @@ body.settings-open #settings { display: flex; }
 
 footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
   border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
-footer button { padding: 2px 6px; border-radius: 6px; }
+footer button { padding: 2px 8px; border-radius: 6px; font-size: 18px; line-height: 1.2; }
 footer button:hover { background: var(--line); color: var(--text); }
 </style>
 </head>
