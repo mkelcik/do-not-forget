@@ -24,3 +24,35 @@ jobs:
         run: go test -run 'TestTranslationFiles|TestTranslator' -v .
       - run: make tools
       - run: make ci
+
+  # Linux above runs everything; these build, test and vuln-check the other desktop platforms,
+  # which nobody develops on day to day. govulncheck sees only what builds for the OS it runs on
+  # (wincred and go-toast exist only on Windows), so it runs on each. Lint stays on Linux: what
+  # it would add here is the few lines of platform_other.go.
+  platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./...
+      - name: Test
+        shell: bash
+        run: |
+          race=""
+          [ "$RUNNER_OS" = macOS ] && race=-race   # the race detector needs cgo; Windows builds without it
+          go test $race -count=1 ./...
+      - name: Production build
+        shell: bash
+        run: go build -tags production -o "$RUNNER_TEMP/do-not-forget" .
+      - name: govulncheck
+        shell: bash
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0   # same version as `make tools`
+          "$(go env GOPATH)/bin/govulncheck" ./...

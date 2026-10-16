@@ -22,11 +22,8 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Releases
 
-- [ ] Test an in-app update end to end: from 0.8.2 (the first with manifest signatures and the
-      About-page update button) to the next release
 - [ ] Try on real Windows and on Linux with Google (tray, notifications, alert, updater, keychain)
 - [ ] Retake the website screenshot (`make showcase`): the current one still wraps 12-hour times
-- [ ] CI: build and test on macOS and Windows, nightly govulncheck
 
 ## Later
 
