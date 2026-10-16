@@ -48,6 +48,8 @@
 
   "detail.link": "Odkaz",
   "detail.description": "Popis",
+  "detail.more": "Zobrazit více",
+  "detail.less": "Zobrazit méně",
   "detail.attendees": "Účastníci",
 
   "footer.refresh": "Obnovit",
@@ -58,8 +60,13 @@
   "settings.accounts": "Účty a kalendáře",
   "settings.synced": "{{provider}} · synchronizováno {{ago}}",
   "settings.disconnect": "Odpojit",
+  "settings.disconnecting": "Odpojuji…",
   "settings.add_account": "+ Přidat účet",
   "settings.coming_soon": "Brzy",
+  "settings.account_error": "Nelze synchronizovat: {{error}}",
+  "settings.google_waiting": "Dokonči přihlášení v prohlížeči…",
+  "settings.google_failed": "Nepodařilo se připojit: {{error}}",
+  "settings.google_unavailable": "Tento build nemá Google client ID",
   "settings.notifications": "Oznámení",
   "settings.notify": "Upozorňovat na schůzky",
   "settings.notify_minutes": "Kolik minut předem",
@@ -85,6 +92,11 @@
   "settings.tray_style_icon": "Ikona",
   "settings.tray_style_both": "Ikona + text",
   "settings.tray_style_text": "Text",
+  "settings.tray_length": "Délka názvu v liště",
+  "settings.tray_length_desc": "Delší název se zkrátí s „…“, odpočet zůstane celý",
+  "settings.tray_length_chars_one": "{{count}} znak",
+  "settings.tray_length_chars_few": "{{count}} znaky",
+  "settings.tray_length_chars_other": "{{count}} znaků",
   "settings.general": "Obecné",
   "settings.autostart": "Spustit po přihlášení",
   "settings.sync_every": "Synchronizovat každých",
@@ -115,5 +127,9 @@
   "update.body_install": "Aktualizace nainstaluje novou verzi a restartuje aplikaci.",
   "update.body_download": "Aktualizovat otevře stránku se stažením nové verze.",
   "update.failed_title": "Aktualizace selhala",
-  "update.failed_body": "Zkusím to znovu při další kontrole. Podrobnosti jsou v logu."
+  "update.failed_body": "Zkusím to znovu při další kontrole. Podrobnosti jsou v logu.",
+
+  "google.signed_in": "Přihlášení do do-not-forget proběhlo. Tuto kartu můžeš zavřít.",
+  "google.failed": "Přihlášení selhalo. Zavři kartu a zkus to znovu.",
+  "event.no_title": "(Bez názvu)"
 }

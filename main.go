@@ -9,8 +9,11 @@ import (
 	"html"
 	"io/fs"
 	"log"
+	"maps"
 	"os"
 	"runtime"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,7 +55,7 @@ func main() {
 	webLangs := []string{} // navigator.languages, reported by the popup; the OS locale on macOS/Windows
 	tr.Store(langs.translator(langs.resolve(append([]string{cfg.Language}, systemLanguages()...)...)))
 	var (
-		mu         sync.Mutex // guards cfg and events
+		mu         sync.Mutex // guards cfg, events and accounts
 		events     []Event
 		showWindow func()
 	)
@@ -90,11 +93,38 @@ func main() {
 		})
 	})
 
-	tray := app.SystemTray.New()
-	var sources []Source
-	if *dummyPath != "" {
-		sources = append(sources, &dummySource{path: *dummyPath, base: time.Now()})
+	// Links from event data (and the UI) go to the OS only as http(s).
+	openURL := func(link string) {
+		if !externalURL(link) {
+			log.Printf("not opening %q: only http(s) links", link)
+			return
+		}
+		_ = app.Browser.OpenURL(link)
 	}
+	app.Event.On("open", func(ev *application.CustomEvent) {
+		link, _ := ev.Data.(string)
+		openURL(link)
+	})
+
+	tray := app.SystemTray.New()
+	var emitAccounts func()
+	var dummy Source
+	if *dummyPath != "" {
+		dummy = &dummySource{path: *dummyPath, base: time.Now()}
+	}
+	// Google accounts, guarded by mu. A token missing from the keychain leaves the account
+	// listed with its error, so Settings can offer to connect it again.
+	var accounts []*googleSource
+	for _, a := range cfg.Accounts {
+		tok, err := loadToken(a.Email)
+		if err != nil {
+			accounts = append(accounts, brokenGoogleSource(a.Email, fmt.Errorf("keychain: %w", err)))
+			continue
+		}
+		accounts = append(accounts, newGoogleSource(a.Email, tok, a.Hidden))
+	}
+	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
+	mgr := &accountManager{mu: &mu, list: &accounts, removing: map[string]bool{}, saveConfig: saveConfig}
 
 	// The tray icon: a template on macOS, so it follows a light or dark menu bar.
 	// ponytail: the muted icon is drawn for dark panels only, see trayIcon.
@@ -111,7 +141,7 @@ func main() {
 		mu.Lock()
 		next := nextEvent(events, now)
 		muted := muteLabel(cfg.MutedUntil, now)
-		style := cfg.TrayStyle
+		style, titleMax := cfg.TrayStyle, cfg.TrayTitleMax
 		mu.Unlock()
 		title, sub := T("tray.none"), ""
 		if next != nil {
@@ -131,7 +161,7 @@ func main() {
 		// Menu bar text only for a meeting today (or still running); otherwise just the icon.
 		label := ""
 		if next != nil && style != "icon" && daysBetween(now, next.Start) <= 0 {
-			label = next.Title + " · " + untilText(next, now)
+			label = truncateTitle(next.Title, titleMax) + " · " + untilText(next, now)
 		}
 		tray.SetLabel(label)
 		// Text only hides the icon, unless there's no text or the icon has to show the mute.
@@ -148,18 +178,130 @@ func main() {
 			setTrayIcon(muted != "")
 		}
 	}
+	// Settings › Accounts: each account with its calendars and last sync error.
+	emitAccounts = func() {
+		mu.Lock()
+		gs := append([]*googleSource{}, accounts...)
+		state := map[string]any{"google": googleClientID != "", "adding": adding, "error": addErr,
+			"removing": slices.Collect(maps.Keys(mgr.removing))}
+		mu.Unlock()
+		list := make([]map[string]any, 0, len(gs))
+		for _, g := range gs {
+			cals, errText := g.status()
+			list = append(list, map[string]any{"email": g.email, "calendars": cals, "error": errText})
+		}
+		state["accounts"] = list
+		app.Event.Emit("accounts", state)
+	}
 	refresh := func() {
 		now := time.Now()
 		y, m, d := now.Date()
 		today := time.Date(y, m, d, 0, 0, 0, 0, now.Location())
+		mu.Lock()
+		var sources []Source
+		if dummy != nil {
+			sources = append(sources, dummy)
+		}
+		for _, g := range accounts {
+			sources = append(sources, g)
+		}
+		mu.Unlock()
 		evs := fetchAll(context.Background(), sources, today, today.AddDate(0, 0, 7)) // the 7-day tab
 		mu.Lock()
 		events = evs
 		mu.Unlock()
 		app.Event.Emit("events", map[string]any{"events": evs, "synced": now, "sources": len(sources)})
 		updateTray()
+		emitAccounts()
 	}
 	app.Event.On("refresh", func(*application.CustomEvent) { go refresh() })
+	app.Event.On("accounts:get", func(*application.CustomEvent) { emitAccounts() })
+
+	// Connecting a Google account: browser sign-in, then the token into the keychain.
+	// Connecting one that's already there replaces its token and keeps its calendar choice.
+	// Connecting: browser sign-in first (no lock, it can take minutes), then the manager stores it.
+	addAccount := func() error {
+		if mgr.busy() {
+			return errBusy
+		}
+		tok, err := googleLogin(context.Background(), app.Browser.OpenURL)
+		if err != nil {
+			return err
+		}
+		email, hidden, err := accountEmail(context.Background(), tok)
+		if err != nil {
+			return err
+		}
+		return mgr.connect(email, tok, hidden)
+	}
+	app.Event.On("account:add", func(*application.CustomEvent) {
+		mu.Lock()
+		if adding {
+			mu.Unlock()
+			return
+		}
+		adding, addErr = true, ""
+		mu.Unlock()
+		emitAccounts()
+		go func() {
+			err := addAccount()
+			mu.Lock()
+			adding = false
+			if err != nil {
+				log.Printf("add account: %v", err)
+				addErr = err.Error()
+			}
+			mu.Unlock()
+			refresh() // also re-emits the accounts
+		}()
+	})
+	// Disconnecting revokes the token at Google and deletes it from the keychain.
+	app.Event.On("account:remove", func(ev *application.CustomEvent) {
+		email, _ := ev.Data.(string)
+		mu.Lock()
+		var g *googleSource
+		if i := slices.IndexFunc(accounts, func(a *googleSource) bool { return a.email == email }); i >= 0 {
+			g = accounts[i]
+		}
+		mu.Unlock()
+		if g == nil {
+			return
+		}
+		go func() {
+			if err := mgr.disconnect(g, emitAccounts); err != nil {
+				log.Printf("remove %s: %v", email, err)
+			}
+			refresh() // also re-emits the accounts
+		}()
+	})
+	app.Event.On("calendar:toggle", func(ev *application.CustomEvent) {
+		var req struct {
+			Email, ID string
+			On        bool
+		}
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		saveConfig(func(c *Config) {
+			for i, a := range c.Accounts {
+				if a.Email == req.Email {
+					a.Hidden = slices.DeleteFunc(a.Hidden, func(id string) bool { return id == req.ID })
+					if !req.On {
+						a.Hidden = append(a.Hidden, req.ID)
+					}
+					c.Accounts[i] = a
+				}
+			}
+		})
+		mu.Lock()
+		for _, g := range accounts {
+			if g.email == req.Email {
+				g.setHidden(req.ID, !req.On)
+			}
+		}
+		mu.Unlock()
+		go refresh()
+	})
 	app.Event.On("respond", func(ev *application.CustomEvent) {
 		var req struct{ ID, Response string }
 		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
@@ -209,7 +351,7 @@ func main() {
 			go installUpdate(app, notifier)
 		case "join":
 			if link, _ := r.Response.UserInfo["link"].(string); link != "" {
-				_ = app.Browser.OpenURL(link)
+				openURL(link)
 			}
 		}
 	})
@@ -323,14 +465,14 @@ func main() {
 	// Switching swaps the translator and redraws everything that has text, no restart.
 	sendLanguage := func() {
 		mu.Lock()
-		setting, trayStyle := cfg.Language, cfg.TrayStyle
+		setting, trayStyle, trayTitleMax := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax
 		mu.Unlock()
 		t := tr.Load()
 		app.Event.Emit("i18n", map[string]any{
 			"lang": t.code, "strings": t.strings, "languages": langs.languages(), "setting": setting,
 			"version": version, // for Settings › About
 			// Settings › Menu bar, offered on macOS only.
-			"trayStyle": trayStyle, "platform": runtime.GOOS,
+			"trayStyle": trayStyle, "trayTitleMax": trayTitleMax, "platform": runtime.GOOS,
 		})
 	}
 	applyLanguage := func() {
@@ -359,6 +501,12 @@ func main() {
 		code, _ := ev.Data.(string)
 		saveConfig(func(c *Config) { c.Language = code })
 		applyLanguage()
+	})
+	app.Event.On("tray:length", func(ev *application.CustomEvent) {
+		if n, _ := ev.Data.(float64); validTrayTitleMax(int(n)) { // JSON numbers arrive as float64
+			saveConfig(func(c *Config) { c.TrayTitleMax = int(n) })
+			updateTray()
+		}
 	})
 	app.Event.On("tray:style", func(ev *application.CustomEvent) {
 		if style, _ := ev.Data.(string); validTrayStyle(style) {
@@ -426,6 +574,15 @@ func untilText(e *Event, now time.Time) string {
 		return T("in.min", "m", m)
 	}
 	return T("in.hmin", "h", m/60, "m", m%60)
+}
+
+// truncateTitle shortens a title to at most max characters, ending in "…".
+func truncateTitle(s string, maxLen int) string {
+	r := []rune(s)
+	if len(r) <= maxLen {
+		return s
+	}
+	return strings.TrimRight(string(r[:maxLen-1]), " -–·,:") + "…"
 }
 
 // daysBetween counts calendar days from a to b (0 = same day), DST-safe.

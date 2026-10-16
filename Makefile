@@ -27,6 +27,8 @@ help:
 		"  dist        Release archive for this OS/arch into dist/"
 
 DEVAPP := build/do-not-forget-dev.app
+# Arguments for run; `make run RUNARGS=` runs against the connected accounts only.
+RUNARGS ?= -dummy dummy.json
 
 run: build
 ifeq ($(shell uname -s),Darwin)
@@ -43,9 +45,9 @@ ifeq ($(shell uname -s),Darwin)
 		'<key>LSUIElement</key><true/>' \
 		'</dict></plist>' >$(DEVAPP)/Contents/Info.plist
 	codesign --force --sign - $(DEVAPP)
-	$(DEVAPP)/Contents/MacOS/do-not-forget -dummy dummy.json
+	$(DEVAPP)/Contents/MacOS/do-not-forget $(RUNARGS)
 else
-	./do-not-forget -dummy dummy.json
+	./do-not-forget $(RUNARGS)
 endif
 
 build:

@@ -65,13 +65,12 @@ h1 { font-size: clamp(34px, 5vw, 64px); font-weight: 700; line-height: 1.08; mar
 <div class="hint" data-i18n="alert.esc_hint"></div>
 
 <script type="module">
-import { Events, Browser, Window } from "/wails/runtime.js";
-import { t, onLanguage, hm, dur, esc, svc } from "/i18n.js";
+import { Events, Window } from "/wails/runtime.js";
+import { t, onLanguage, hm, dur, esc, joinLabel, openURL, linkify } from "/i18n.js";
 
 let events = [];
 const when = (d) => { const m = Math.round((Date.now() - d) / 60000); return m <= 0 ? t("alert.starting") : t("alert.started", { m }); };
 // Escape first, then turn URLs into clickable buttons that open in the browser.
-const linkify = (s) => esc(s).replace(/https?:\/\/[^\s<]+/g, (u) => `<button data-url="${u}">${u}</button>`);
 const statuses = ["yes", "maybe", "no", "pending"];
 
 function render() {
@@ -105,7 +104,7 @@ function render() {
         ${e.organizer ? `<div><span>👤</span><span>${t("alert.organized_by", { name: esc(e.organizer) })}</span></div>` : ""}
       </div>
       <div class="actions">
-        ${e.link ? `<button class="join" data-url="${esc(e.link)}" data-close>${t("join.via", { service: svc(e.link) })}</button>` : ""}
+        ${e.link ? `<button class="join" data-url="${esc(e.link)}" data-close>${joinLabel(e)}</button>` : ""}
         ${e.calendarUrl ? `<button class="ghost" data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : ""}
         <button class="ghost" data-close>${t("alert.close")}</button>
       </div>
@@ -127,7 +126,7 @@ document.addEventListener("click", (ev) => {
     return render();
   }
   const link = t.closest("[data-url]");
-  if (link) Browser.OpenURL(link.dataset.url);
+  if (link) openURL(link.dataset.url);
   if (t.closest("[data-close]")) Window.Hide();
 });
 onLanguage(render);

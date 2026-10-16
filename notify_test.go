@@ -81,3 +81,20 @@ func TestUntilTextDays(t *testing.T) {
 		}
 	}
 }
+
+func TestTruncateTitle(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		max  int
+		want string
+	}{
+		{"Standup", 25, "Standup"},
+		{"Everpure Video Interview - Michal Kelčík", 25, "Everpure Video Interview…"},
+		{"Team Astartes - weekly sync", 15, "Team Astartes…"}, // no dangling " -"
+		{"Čľťžý ďáľšíé", 6, "Čľťžý…"},                         // runes, not bytes
+	} {
+		if got := truncateTitle(c.in, c.max); got != c.want {
+			t.Errorf("truncateTitle(%q, %d) = %q, want %q", c.in, c.max, got, c.want)
+		}
+	}
+}

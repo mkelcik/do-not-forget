@@ -5,7 +5,7 @@ import { Events } from "/wails/runtime.js";
 
 let strings = {};
 const listeners = [];
-export const i18n = { lang: "en", languages: [], setting: "", version: "", trayStyle: "both", platform: "" };
+export const i18n = { lang: "en", languages: [], setting: "", version: "", trayStyle: "both", trayTitleMax: 25, platform: "" };
 
 // t("in.min", { m: 5 }); a numeric `count` picks the CLDR plural form (key_one, key_few, …).
 // Translations carry no markup (CI checks), but vars are inserted as given: escape them.
@@ -31,7 +31,12 @@ export const dur = (e) => {
   return m < 60 ? t("dur.min", { m }) : m % 60 ? t("dur.hmin", { h, m: m % 60 }) : t("dur.h", { h });
 };
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-export const svc = (l) => l.includes("zoom") ? "Zoom" : l.includes("teams") ? "Teams" : "Meet";
+// Escaped text with its links as buttons (opened through the backend, http(s) only).
+export const linkify = (s) => esc(s).replace(/https?:\/\/[^\s<]+/g, (u) => `<button data-url="${u}">${u}</button>`);
+// The backend names the service from the link's host; unknown services get a plain "Join".
+export const joinLabel = (e) => e.service ? t("join.via", { service: e.service }) : t("join");
+// Links open through the backend, which only passes http(s) on to the OS.
+export const openURL = (url) => Events.Emit("open", url);
 
 export function onLanguage(cb) { listeners.push(cb); }
 export function setLanguage(code) { Events.Emit("i18n:set", code); }
@@ -39,7 +44,7 @@ export function setLanguage(code) { Events.Emit("i18n:set", code); }
 Events.On("i18n", ({ data }) => {
   ({ strings } = data);
   Object.assign(i18n, { lang: data.lang, languages: data.languages, setting: data.setting, version: data.version,
-    trayStyle: data.trayStyle, platform: data.platform });
+    trayStyle: data.trayStyle, trayTitleMax: data.trayTitleMax, platform: data.platform });
   document.documentElement.lang = data.lang;
   applyStatic();
   listeners.forEach((cb) => cb());

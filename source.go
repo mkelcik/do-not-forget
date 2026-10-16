@@ -20,6 +20,7 @@ type Event struct {
 	Description string     `json:"description,omitempty"`
 	Organizer   string     `json:"organizer,omitempty"`
 	Link        string     `json:"link,omitempty"`        // meeting URL (Meet, Zoom, Teams, ...)
+	Service     string     `json:"service,omitempty"`     // Meet | Zoom | Teams, by the link's host; "" otherwise
 	CalendarURL string     `json:"calendarUrl,omitempty"` // the event in the provider's web UI
 	Attendees   []Attendee `json:"attendees,omitempty"`
 	// Response is my RSVP: pending | yes | maybe | no; empty when there's nothing to answer
@@ -54,7 +55,17 @@ func fetchAll(ctx context.Context, sources []Source, from, to time.Time) []Event
 			continue
 		}
 		for i := range evs {
-			evs[i].src = s
+			e := &evs[i]
+			e.src = s
+			// Only http(s) reaches the UI's buttons, and the service name comes from the host,
+			// never from the link merely containing "zoom".
+			if !externalURL(e.Link) {
+				e.Link = ""
+			}
+			if !externalURL(e.CalendarURL) {
+				e.CalendarURL = ""
+			}
+			e.Service = meetingService(e.Link)
 		}
 		all = append(all, evs...)
 	}

@@ -45,6 +45,8 @@
 
   "detail.link": "Link",
   "detail.description": "Description",
+  "detail.more": "Show more",
+  "detail.less": "Show less",
   "detail.attendees": "Attendees",
 
   "footer.refresh": "Refresh",
@@ -55,8 +57,13 @@
   "settings.accounts": "Accounts and calendars",
   "settings.synced": "{{provider}} · synced {{ago}}",
   "settings.disconnect": "Disconnect",
+  "settings.disconnecting": "Disconnecting…",
   "settings.add_account": "+ Add account",
   "settings.coming_soon": "Coming soon",
+  "settings.account_error": "Can't sync: {{error}}",
+  "settings.google_waiting": "Finish signing in in your browser…",
+  "settings.google_failed": "Couldn't connect: {{error}}",
+  "settings.google_unavailable": "This build has no Google client ID",
   "settings.notifications": "Notifications",
   "settings.notify": "Remind me of meetings",
   "settings.notify_minutes": "Minutes before",
@@ -82,6 +89,10 @@
   "settings.tray_style_icon": "Icon",
   "settings.tray_style_both": "Icon + text",
   "settings.tray_style_text": "Text",
+  "settings.tray_length": "Title length in the menu bar",
+  "settings.tray_length_desc": "Longer titles end in “…”; the countdown always shows",
+  "settings.tray_length_chars_one": "{{count}} character",
+  "settings.tray_length_chars_other": "{{count}} characters",
   "settings.general": "General",
   "settings.autostart": "Start at login",
   "settings.sync_every": "Sync every",
@@ -112,5 +123,9 @@
   "update.body_install": "Update installs the new version and restarts the app.",
   "update.body_download": "Update opens the download page for the new version.",
   "update.failed_title": "Update failed",
-  "update.failed_body": "I'll try again at the next check. Details are in the log."
+  "update.failed_body": "I'll try again at the next check. Details are in the log.",
+
+  "google.signed_in": "Signed in to do-not-forget. You can close this tab.",
+  "google.failed": "Sign-in failed. You can close this tab and try again.",
+  "event.no_title": "(No title)"
 }

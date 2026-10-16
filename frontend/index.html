@@ -100,6 +100,10 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .detail { padding: 2px 12px 12px; font-size: 12px; display: grid; gap: 8px;
   border-top: 1px solid var(--line); margin: 0 8px; padding-top: 10px; }
 .detail .k { color: var(--muted); font-size: 11px; }
+.desc { white-space: pre-line; overflow-wrap: anywhere; user-select: text; }
+.desc button { color: var(--accent); text-decoration: underline; padding: 0; text-align: left; }
+.desc.folded { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.detail .more { padding: 2px 0; margin-top: 2px; }
 .people { display: flex; flex-wrap: wrap; gap: 4px; }
 .person { padding: 2px 6px 2px 2px; border-radius: 99px; background: var(--bg); display: flex; gap: 4px; align-items: center; }
 .person b { width: 18px; height: 18px; border-radius: 50%; background: var(--line); font-size: 9px;
@@ -161,6 +165,9 @@ body.settings-open #settings { display: flex; }
 .add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
 .providers { display: none; padding: 4px 8px 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
 .providers.show { display: grid; }
+#accounts .group { margin-bottom: 8px; }
+.account-head .who small.error, .add-status.error { color: var(--danger); }
+.add-status { padding: 0 12px 10px; font-size: 12px; color: var(--muted); }
 .provider { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--bg); text-align: left; font-size: 12px; }
 .provider:hover:not(:disabled) { border-color: var(--accent); }
@@ -193,29 +200,16 @@ footer button:hover { background: var(--line); color: var(--text); }
   <div class="s-head"><button id="close-settings" data-i18n-title="settings.back">‹</button><h1 data-i18n="settings.title"></h1></div>
   <div class="s-body">
     <h2 data-i18n="settings.accounts"></h2>
+    <div id="accounts"></div>
     <div class="group">
-      <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
-        <div class="who">michal@firma.sk<small class="synced" data-provider="Google" data-min="0"></small></div>
-        <button class="link-btn danger" data-i18n="settings.disconnect"></button></div>
-      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#0a84ff"></span><span class="name">Práca</span></label>
-      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#bf5af2"></span><span class="name">Tím Platby</span></label>
-      <label class="cal"><input type="checkbox"><span class="dot" style="background:#8e8e93"></span><span class="name">Sviatky na Slovensku</span></label>
-    </div>
-    <div class="group" style="margin-top:8px">
-      <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
-        <div class="who">michal@gmail.com<small class="synced" data-provider="Google" data-min="1"></small></div>
-        <button class="link-btn danger" data-i18n="settings.disconnect"></button></div>
-      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#30d158"></span><span class="name">Súkromné</span></label>
-      <label class="cal"><input type="checkbox" checked><span class="dot" style="background:#ff9f0a"></span><span class="name">Rodina</span></label>
-    </div>
-    <div class="group" style="margin-top:8px">
       <button class="add" id="add-account" data-i18n="settings.add_account"></button>
       <div class="providers" id="providers">
-        <button class="provider"><span class="logo" style="color:#4285f4">G</span><span>Google<small>Gmail, Workspace</small></span></button>
+        <button class="provider" id="add-google"><span class="logo" style="color:#4285f4">G</span><span>Google<small>Gmail, Workspace</small></span></button>
         <button class="provider" disabled><span class="logo" style="color:#0078d4">M</span><span>Microsoft<small data-i18n="settings.coming_soon"></small></span></button>
         <button class="provider" disabled><span class="logo"></span><span>iCloud<small data-i18n="settings.coming_soon"></small></span></button>
         <button class="provider" disabled><span class="logo">⟳</span><span>CalDAV / iCal<small data-i18n="settings.coming_soon"></small></span></button>
       </div>
+      <div class="add-status" id="add-status" hidden></div>
     </div>
 
     <h2 data-i18n="settings.notifications"></h2>
@@ -235,6 +229,7 @@ footer button:hover { background: var(--line); color: var(--text); }
       <div class="opt"><span><span data-i18n="settings.week_tab"></span><small data-i18n="settings.week_tab_desc"></small></span><span class="switch on" id="week-toggle"></span></div>
       <div class="opt"><span data-i18n="settings.show_declined"></span><span class="switch on"></span></div>
       <div class="opt" id="tray-style-opt" hidden><span><span data-i18n="settings.tray_style"></span><small data-i18n="settings.tray_style_desc"></small></span><div class="seg" id="tray-style"><button data-style="icon" data-i18n="settings.tray_style_icon"></button><button data-style="both" data-i18n="settings.tray_style_both"></button><button data-style="text" data-i18n="settings.tray_style_text"></button></div></div>
+      <div class="opt" id="tray-length-opt" hidden><span><span data-i18n="settings.tray_length"></span><small data-i18n="settings.tray_length_desc"></small></span><select id="tray-length"></select></div>
     </div>
 
     <h2 data-i18n="settings.general"></h2>
@@ -249,8 +244,8 @@ footer button:hover { background: var(--line); color: var(--text); }
 </section>
 
 <script type="module">
-import { Events, Browser } from "/wails/runtime.js";
-import { t, i18n, onLanguage, setLanguage, hm, dur, esc, svc } from "/i18n.js";
+import { Events } from "/wails/runtime.js";
+import { t, i18n, onLanguage, setLanguage, hm, dur, esc, joinLabel, openURL, linkify } from "/i18n.js";
 
 // Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
 let events = [], synced = null, sources = 1;
@@ -297,7 +292,7 @@ function render() {
       <div class="meta">${hm(next.start)} – ${hm(next.end)} · ${dur(next)}${next.location ? " · " + esc(next.location) : ""}</div>
       ${running ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ""}
       ${next.response === "pending" ? `<div class="ask">${t("rsvp.question")} ${rsvp(next)}</div>` : ""}
-      ${next.link ? `<div class="row"><span class="meta">${t("hero.attendees", { count: (next.attendees || []).length })}</span><button class="join" data-url="${esc(next.link)}">${t("join.via", { service: svc(next.link) })}</button></div>` : ""}
+      ${next.link ? `<div class="row"><span class="meta">${t("hero.attendees", { count: (next.attendees || []).length })}</span><button class="join" data-url="${esc(next.link)}">${joinLabel(next)}</button></div>` : ""}
     </div>`;
   }
 
@@ -358,8 +353,17 @@ function rowHTML(e) {
       <div class="bar"></div>
       <div class="body"><div class="name">${esc(e.title)}${tag}</div>
         <div class="sub">${dur(e)} · ${esc(e.calendar)}${e.location ? " · " + esc(e.location) : ""}</div></div>
-      ${e.link && e.end > now ? `<button class="cam" data-url="${esc(e.link)}">${svc(e.link)}</button>` : ""}
+      ${e.link && e.end > now ? `<button class="cam" data-url="${esc(e.link)}">${esc(e.service || t("join"))}</button>` : ""}
     </div>`;
+}
+
+// Line breaks kept, links clickable; a long description folds to a few lines with "Show more".
+const expanded = new Set();
+function description(e) {
+  const long = e.description.length > 400 || e.description.split("\n").length > 6;
+  const folded = long && !expanded.has(e.id);
+  return `<div class="desc ${folded ? "folded" : ""}">${linkify(e.description)}</div>` +
+    (long ? `<button class="link-btn more" data-more="${esc(e.id)}">${t(folded ? "detail.more" : "detail.less")}</button>` : "");
 }
 
 function detail(e) {
@@ -369,7 +373,7 @@ function detail(e) {
     (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : "");
   const body = [
     e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
-    e.description && `<div><div class="k">${t("detail.description")}</div>${esc(e.description)}</div>`,
+    e.description && `<div><div class="k">${t("detail.description")}</div>${description(e)}</div>`,
     e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp(e)}</div>`,
     people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
     actions && `<div class="actions">${actions}</div>`,
@@ -377,11 +381,39 @@ function detail(e) {
   return body && `<div class="detail">${body}</div>`; // nothing to show → just the outlined row
 }
 
-// Settings texts that need values: sync time, minute options, the language list.
+// Settings › Accounts, from the backend's "accounts" event.
+let accounts = { accounts: [], google: false, adding: false, error: "", removing: [] };
+function renderAccounts() {
+  const removing = new Set(accounts.removing || []);
+  document.getElementById("accounts").innerHTML = accounts.accounts.map((a) => `<div class="group">
+      <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
+        <div class="who">${esc(a.email)}${removing.has(a.email) ? `<small>${t("settings.disconnecting")}</small>`
+          : a.error ? `<small class="error">${t("settings.account_error", { error: esc(a.error) })}</small>`
+          : synced ? `<small>${t("settings.synced", { provider: "Google", ago: ago(synced) })}</small>` : ""}</div>
+        <button class="link-btn danger" data-remove="${esc(a.email)}" ${removing.has(a.email) ? "disabled" : ""}>${t("settings.disconnect")}</button></div>
+      ${a.calendars.map((c) => `<label class="cal"><input type="checkbox" data-email="${esc(a.email)}" data-cal="${esc(c.id)}" ${c.on ? "checked" : ""}>
+        <span class="dot" style="background:${esc(c.color)}"></span><span class="name">${esc(c.name)}</span></label>`).join("")}
+    </div>`).join("");
+  // The backend refuses too; this just doesn't offer it while a disconnect is finishing.
+  document.getElementById("add-google").disabled = !accounts.google || accounts.adding || removing.size > 0;
+  const status = document.getElementById("add-status");
+  const msg = accounts.adding ? t("settings.google_waiting")
+    : accounts.error ? t("settings.google_failed", { error: accounts.error })
+    : accounts.google ? "" : t("settings.google_unavailable");
+  status.hidden = !msg;
+  status.textContent = msg;
+  status.classList.toggle("error", !accounts.adding && !!accounts.error);
+}
+Events.On("accounts", ({ data }) => { accounts = data; renderAccounts(); });
+Events.Emit("accounts:get");
+document.getElementById("accounts").addEventListener("change", (ev) => {
+  const box = ev.target.closest("input[data-cal]");
+  if (box) Events.Emit("calendar:toggle", { email: box.dataset.email, id: box.dataset.cal, on: box.checked });
+});
+
+// Settings texts that need values: accounts, minute options, the language list.
 function fillSettings() {
-  document.querySelectorAll(".synced").forEach((el) => {
-    el.textContent = t("settings.synced", { provider: el.dataset.provider, ago: agoMin(+el.dataset.min) });
-  });
+  renderAccounts();
   document.querySelectorAll("select[data-minutes]").forEach((sel) => {
     const cur = sel.value || sel.dataset.selected;
     sel.innerHTML = sel.dataset.minutes.split(",").map((m) =>
@@ -392,7 +424,14 @@ function fillSettings() {
   document.getElementById("version").textContent = t("settings.version", { version: i18n.version });
   document.getElementById("tray-style-opt").hidden = i18n.platform !== "darwin"; // other trays take no text
   document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b.dataset.style === i18n.trayStyle));
+  document.getElementById("tray-length-opt").hidden = i18n.platform !== "darwin" || i18n.trayStyle === "icon";
+  document.getElementById("tray-length").innerHTML = [15, 20, 25, 30, 40, 50].map((n) =>
+    `<option value="${n}" ${n === i18n.trayTitleMax ? "selected" : ""}>${t("settings.tray_length_chars", { count: n })}</option>`).join("");
 }
+document.getElementById("tray-length").addEventListener("change", (ev) => {
+  i18n.trayTitleMax = +ev.target.value;
+  Events.Emit("tray:length", i18n.trayTitleMax);
+});
 document.getElementById("language").addEventListener("change", (ev) => setLanguage(ev.target.value));
 onLanguage(() => { fillSettings(); render(); });
 
@@ -412,6 +451,9 @@ document.addEventListener("click", (ev) => {
   if (t.closest("#open-settings")) return document.body.classList.add("settings-open");
   if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
   if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
+  if (t.closest("#add-google")) return Events.Emit("account:add");
+  const remove = t.closest("[data-remove]");
+  if (remove) return Events.Emit("account:remove", remove.dataset.remove);
   const sw = t.closest(".switch");
   if (sw) {
     const on = sw.classList.toggle("on"); // mock: not persisted yet
@@ -432,10 +474,11 @@ document.addEventListener("click", (ev) => {
   if (style) {
     i18n.trayStyle = style.dataset.style;
     document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b === style));
+    document.getElementById("tray-length-opt").hidden = i18n.trayStyle === "icon";
     return Events.Emit("tray:style", style.dataset.style);
   }
   const link = t.closest("[data-url]");
-  if (link) return Browser.OpenURL(link.dataset.url);
+  if (link) return openURL(link.dataset.url);
   if (t.closest("#refresh")) return Events.Emit("refresh");
   const chip = t.closest(".chip");
   if (chip) { const c = chip.dataset.cal; hidden.has(c) ? hidden.delete(c) : hidden.add(c); return render(); }
@@ -443,6 +486,12 @@ document.addEventListener("click", (ev) => {
   if (tab) {
     day = +tab.dataset.day; open = null;
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b === tab));
+    return render();
+  }
+  const more = t.closest("[data-more]");
+  if (more) {
+    const id = more.dataset.more;
+    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
     return render();
   }
   const row = t.closest(".ev");
@@ -454,6 +503,7 @@ Events.On("events", ({ data }) => {
   synced = new Date(data.synced);
   sources = data.sources;
   render();
+  renderAccounts(); // "synced … ago"
 });
 Events.Emit("refresh");
 render();

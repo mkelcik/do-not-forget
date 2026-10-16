@@ -22,9 +22,23 @@ type Config struct {
 	// TrayStyle is what the macOS menu bar shows for today's next meeting: "icon", "text" or
 	// "both" (icon + title and countdown). Other systems' trays only take an icon.
 	TrayStyle string `json:"trayStyle"`
+	// TrayTitleMax caps the meeting title in the macOS menu bar, in characters; the countdown
+	// after it always shows in full.
+	TrayTitleMax int `json:"trayTitleMax"`
+	// Accounts are the connected calendar accounts; their tokens are in the system keychain.
+	Accounts []Account `json:"accounts"`
+}
+
+// Account is a connected Google account.
+type Account struct {
+	Email string `json:"email"`
+	// Hidden lists the IDs of calendars unticked in Settings; new calendars show up ticked.
+	Hidden []string `json:"hidden,omitempty"`
 }
 
 func validTrayStyle(s string) bool { return s == "icon" || s == "text" || s == "both" }
+
+func validTrayTitleMax(n int) bool { return n >= 10 && n <= 100 }
 
 // muteForever is "until I turn it back on".
 var muteForever = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -47,12 +61,15 @@ func loadConfig() Config {
 	_ = os.MkdirAll(dir, 0o700)
 	_ = os.Chmod(dir, 0o700) //nolint:gosec // G302: a directory needs the x bit; 0700 is owner-only
 
-	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true, TrayStyle: "both"}
+	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true, TrayStyle: "both", TrayTitleMax: 25}
 	if b, err := os.ReadFile(configPath()); err == nil {
 		_ = json.Unmarshal(b, &c)
 	}
 	if !validTrayStyle(c.TrayStyle) {
 		c.TrayStyle = "both"
+	}
+	if !validTrayTitleMax(c.TrayTitleMax) {
+		c.TrayTitleMax = 25
 	}
 	return c
 }

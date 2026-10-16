@@ -5,19 +5,20 @@
 ## 1. Google konektor
 
 - [ ] Vytvoriť projekt v Google Cloud Console, zapnúť Calendar API, OAuth consent screen
-      (scope `calendar.events`), OAuth client typu „Desktop app“, prepnúť na „In production“
+      (scopes `calendar.events` a `calendar.calendarlist.readonly`), OAuth client typu „Desktop app“, prepnúť na „In production“
       (v režime Testing tokeny vypršia po 7 dňoch)
 - [ ] Nastaviť secrets `GOOGLE_CLIENT_ID` a `GOOGLE_CLIENT_SECRET`, lokálne `.env`
-      (build ich už vkladá cez `-X main.googleClientID` / `main.googleClientSecret`, premenné v Go ešte nie sú)
-- [ ] Prihlásenie: prehliadač + loopback na `127.0.0.1` + PKCE
-- [ ] Tokeny do systémovej kľúčenky (`go-keyring`: Secret Service / Keychain / Credential Manager);
+      (build ich vkladá cez `-X main.googleClientID` / `main.googleClientSecret`)
+- [x] Prihlásenie: prehliadač + loopback na `127.0.0.1` + PKCE
+- [x] Tokeny do systémovej kľúčenky (`go-keyring`: Secret Service / Keychain / Credential Manager);
       bez kľúčenky účet nepridať, nikdy do súboru
-- [ ] Viac účtov naraz (pracovný + súkromný), každý ako samostatný `Source`
-- [ ] Výber kalendárov v účte, farby z Google
-- [ ] Načítanie dnes + zajtra (`singleEvents=true`), `htmlLink` → `CalendarURL`, organizátor, účastníci, moja odpoveď
-- [ ] Odkaz na meeting z `conferenceData`, potom z miesta a popisu (Meet, Zoom, Teams)
-- [ ] RSVP cez `events.patch` (poslať celý zoznam účastníkov, zmeniť len seba; jeden výskyt vs. séria)
-- [ ] ID udalostí s prefixom účtu (tá istá pozvánka v dvoch účtoch má rovnaké ID)
+- [x] Viac účtov naraz (pracovný + súkromný), každý ako samostatný `Source`
+- [x] Výber kalendárov v účte, farby z Google
+- [x] Načítanie 7 dní (`singleEvents=true`), `htmlLink` → `CalendarURL`, organizátor, účastníci, moja odpoveď
+- [x] Odkaz na meeting z `conferenceData`, potom z miesta a popisu (Meet, Zoom, Teams)
+- [x] RSVP cez `events.patch` (poslať celý zoznam účastníkov, zmeniť len seba); zatiaľ len jeden výskyt, nie celá séria
+- [x] ID udalostí s prefixom účtu (tá istá pozvánka v dvoch účtoch má rovnaké ID)
+- [ ] Overiť naživo s reálnym účtom (prihlásenie, obnova tokenu po hodine, RSVP, odpojenie)
 - [ ] Vlastné Client ID v nastaveniach (pre forky a tých, čo nechcú náš client)
 
 ## 2. Funkčné nastavenia
