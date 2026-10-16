@@ -4,3 +4,4 @@ do-not-forget
 build/
 dist/
 .env
+.DS_Store

@@ -34,12 +34,14 @@ RUNARGS ?= -dummy dummy.json
 run: build
 ifeq ($(shell uname -s),Darwin)
 	@# macOS notifications abort outside an app bundle, so run from a minimal one.
-	mkdir -p $(DEVAPP)/Contents/MacOS
+	mkdir -p $(DEVAPP)/Contents/MacOS $(DEVAPP)/Contents/Resources
 	cp do-not-forget $(DEVAPP)/Contents/MacOS/
+	cp assets/AppIcon.icns $(DEVAPP)/Contents/Resources/
 	printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
 		'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
 		'<plist version="1.0"><dict>' \
 		'<key>CFBundleExecutable</key><string>do-not-forget</string>' \
+		'<key>CFBundleIconFile</key><string>AppIcon</string>' \
 		'<key>CFBundleIdentifier</key><string>io.github.mkelcik.do-not-forget.dev</string>' \
 		'<key>CFBundleName</key><string>Do Not Forget</string>' \
 		'<key>CFBundlePackageType</key><string>APPL</string>' \

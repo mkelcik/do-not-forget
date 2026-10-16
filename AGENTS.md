@@ -27,6 +27,7 @@ no frontend build step.
 | `frontend/index.html` | Popup: agenda, details, settings |
 | `frontend/alert.html` | Maximised meeting-start alert |
 | `scripts/dist.sh` | Release archive for the current OS/arch |
+| `scripts/appicon.go`, `assets/AppIcon.icns` | macOS app icon; regenerate with `go run scripts/appicon.go` |
 | `docs/` | GitHub Pages site: home page and privacy policy (plain HTML, no build) |
 
 ## Commands

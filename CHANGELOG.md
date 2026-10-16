@@ -8,6 +8,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Homebrew: `brew install --cask mkelcik/tap/do-not-forget`; releases update the cask.
+- macOS app icon (Dock, Finder, Spotlight, Launchpad).
 
 ## [0.8.0] - 2026-10-16
 

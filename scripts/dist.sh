@@ -25,7 +25,8 @@ linux)
 	;;
 darwin)
 	app="build/$NAME.app"
-	mkdir -p "$app/Contents/MacOS"
+	mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+	cp assets/AppIcon.icns "$app/Contents/Resources/" # go run scripts/appicon.go
 	go build -trimpath -tags production -ldflags "$LDFLAGS" -o "$app/Contents/MacOS/$NAME" .
 	# LSUIElement: tray-only app, no Dock icon. A bundle id is needed for notifications.
 	cat >"$app/Contents/Info.plist" <<PLIST
@@ -34,6 +35,7 @@ darwin)
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key><string>$NAME</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
 	<key>CFBundleIdentifier</key><string>io.github.mkelcik.do-not-forget</string>
 	<key>CFBundleName</key><string>Do Not Forget</string>
 	<key>CFBundleDisplayName</key><string>Do Not Forget</string>
