@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Do Not Forget
+Comment=Calendar events and meeting reminders in the system tray
+Exec=do-not-forget
+Icon=do-not-forget
+Terminal=false
+Categories=Office;Calendar;
