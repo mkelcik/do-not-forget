@@ -91,7 +91,10 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .now { display: flex; align-items: center; gap: 6px; color: var(--danger); font-size: 10px; font-weight: 600; margin: 2px 0; }
 .now::after { content: ""; flex: 1; height: 1px; background: var(--danger); }
 .allday { padding: 5px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12px;
-  background: color-mix(in srgb, var(--c) 18%, transparent); }
+  background: color-mix(in srgb, var(--c) 18%, transparent); display: flex; gap: 8px; align-items: baseline; }
+.allday .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.allday .cal-name { color: var(--muted); font-size: 11px; flex: none; max-width: 45%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Expanded event: row + detail in one card, full width */
 .open-card { margin: 4px 0; border-radius: 10px; background: var(--card);
@@ -340,7 +343,8 @@ function dayHTML(n, now) {
   if (!list.length) return "";
   const timed = list.filter((e) => !e.allDay);
   let html = list.filter((e) => e.allDay).map((e) =>
-    `<div class="allday" style="--c:${e.color}">📅 ${esc(e.title)}</div>`).join("");
+    `<div class="allday" style="--c:${e.color}"><span class="name">📅 ${esc(e.title)}</span>
+      <span class="cal-name">${esc(e.calendar)}</span></div>`).join(""); // which account/calendar, like timed rows
   // Overlapping events form one cluster; clusters of 2+ render as a conflict group.
   // Declined events never conflict: they sit on their own without breaking the active cluster.
   const clusters = [];
