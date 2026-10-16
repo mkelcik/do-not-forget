@@ -26,8 +26,27 @@ help:
 		"  ci          Everything CI runs" \
 		"  dist        Release archive for this OS/arch into dist/"
 
+DEVAPP := build/do-not-forget-dev.app
+
 run: build
+ifeq ($(shell uname -s),Darwin)
+	@# macOS notifications abort outside an app bundle, so run from a minimal one.
+	mkdir -p $(DEVAPP)/Contents/MacOS
+	cp do-not-forget $(DEVAPP)/Contents/MacOS/
+	printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
+		'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+		'<plist version="1.0"><dict>' \
+		'<key>CFBundleExecutable</key><string>do-not-forget</string>' \
+		'<key>CFBundleIdentifier</key><string>io.github.mkelcik.do-not-forget.dev</string>' \
+		'<key>CFBundleName</key><string>do-not-forget</string>' \
+		'<key>CFBundlePackageType</key><string>APPL</string>' \
+		'<key>LSUIElement</key><true/>' \
+		'</dict></plist>' >$(DEVAPP)/Contents/Info.plist
+	codesign --force --sign - $(DEVAPP)
+	$(DEVAPP)/Contents/MacOS/do-not-forget -dummy dummy.json
+else
 	./do-not-forget -dummy dummy.json
+endif
 
 build:
 	go build -ldflags "-X main.version=dev -X main.googleClientID=$(GOOGLE_CLIENT_ID) -X main.googleClientSecret=$(GOOGLE_CLIENT_SECRET)" -o do-not-forget .
