@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"log"
 	"maps"
 	"net"
 	"net/http"
@@ -182,6 +181,8 @@ func deleteToken(email string) error {
 }
 
 // revokeToken withdraws the app's access at Google; revoking the refresh token ends the whole grant.
+// Only 200, or 400 with "invalid_token" (already revoked or expired), count as revoked: other
+// 400s are errors in the request, not proof the token is dead.
 func revokeToken(t *oauth2.Token) error {
 	tok := t.RefreshToken
 	if tok == "" {
@@ -198,25 +199,53 @@ func revokeToken(t *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest { // 400: already invalid
-		return fmt.Errorf("revoke: %s", resp.Status)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusOK {
+		return nil
 	}
-	return nil
+	var body struct {
+		Error       string `json:"error"`
+		Description string `json:"error_description"`
+	}
+	_ = json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&body)
+	if resp.StatusCode == http.StatusBadRequest && body.Error == "invalid_token" {
+		return nil
+	}
+	return fmt.Errorf("revoke: %s %s %s", resp.Status, body.Error, body.Description)
 }
 
-// forgetToken revokes the token at Google (best effort, logged) and deletes it from the keychain.
-// tok may be nil, then the keychain's copy is revoked.
-func forgetToken(email string, tok *oauth2.Token) error {
+// closeMode is how closing an account's session treats its token.
+type closeMode int
+
+const (
+	keepToken       closeMode = iota // a reconnect replaces the session; the keychain entry stays
+	revokeAndDelete                  // disconnect: revoke at Google, then delete
+	deleteOnly                       // disconnect without revoking: the user's choice after a failed revoke
+)
+
+// revokeError means Google didn't confirm the revocation. The token stays in the keychain, so
+// the disconnect can be retried; access may still be valid at Google until then.
+type revokeError struct{ err error }
+
+func (e *revokeError) Error() string { return "access at Google not revoked: " + e.err.Error() }
+func (e *revokeError) Unwrap() error { return e.err }
+
+// forgetToken revokes the token at Google (unless deleteOnly) and then deletes it from the
+// keychain. A failed revoke deletes nothing and returns a *revokeError. tok may be nil, then
+// the keychain's copy is used; with none there's nothing left to revoke.
+func forgetToken(email string, tok *oauth2.Token, mode closeMode) error {
 	if tok == nil {
 		tok, _ = loadToken(email)
 	}
-	if tok != nil {
+	if mode == revokeAndDelete && tok != nil {
 		if err := revokeToken(tok); err != nil {
-			log.Printf("%s: %v", email, err) // still delete locally; access can be removed in the Google account
+			return &revokeError{err}
 		}
 	}
-	return deleteToken(email)
+	if err := deleteToken(email); err != nil {
+		return fmt.Errorf("credentials not removed from the keychain: %w", err)
+	}
+	return nil
 }
 
 // savingTokenSource writes refreshed tokens back to the keychain, until it's closed: a refresh
@@ -253,16 +282,16 @@ func (s *savingTokenSource) Token() (*oauth2.Token, error) {
 	return t, nil
 }
 
-// close stops all further saving; forget also revokes the token and deletes it from the keychain.
-func (s *savingTokenSource) close(forget bool) error {
+// close stops all further saving; unless mode is keepToken it then forgets the token.
+func (s *savingTokenSource) close(mode closeMode) error {
 	s.mu.Lock()
 	s.closed = true
 	tok := s.tok
 	s.mu.Unlock()
-	if !forget {
+	if mode == keepToken {
 		return nil
 	}
-	return forgetToken(s.email, tok)
+	return forgetToken(s.email, tok, mode)
 }
 
 // googleSource is one Google account. Events come from every calendar the user hasn't hidden.
@@ -312,24 +341,34 @@ func brokenGoogleSource(email string, err error) *googleSource {
 }
 
 // close ends the account's session: requests in flight are cancelled and tokens are no longer
-// saved. forget also revokes the token and removes it from the keychain; an error means the
-// keychain still holds it, and close can be retried.
-func (g *googleSource) close(forget bool) error {
+// saved. Unless mode is keepToken it also forgets the token (see forgetToken); an error means
+// the keychain still holds it, it's shown on the account, and close can be retried.
+func (g *googleSource) close(mode closeMode) error {
 	g.stop()
 	g.mu.Lock()
 	g.closed = true
 	g.err = errDisconnected
 	g.mu.Unlock()
 	var err error
-	if g.ts != nil {
-		err = g.ts.close(forget)
-	} else if forget {
-		err = forgetToken(g.email, nil)
+	switch {
+	case g.ts != nil:
+		err = g.ts.close(mode)
+	case mode != keepToken:
+		err = forgetToken(g.email, nil, mode)
 	}
 	if err != nil {
-		g.setErr(fmt.Errorf("credentials not removed from the keychain: %w", err))
+		g.setErr(err)
 	}
 	return err
+}
+
+// revokeFailed reports a disconnect that couldn't revoke access at Google, for Settings to
+// offer a retry or removing the account from this computer only.
+func (g *googleSource) revokeFailed() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var re *revokeError
+	return errors.As(g.err, &re)
 }
 
 func (g *googleSource) setErr(err error) {

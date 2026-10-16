@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -41,7 +42,7 @@ func TestDisconnectThenReconnect(t *testing.T) {
 	}
 	g := (*m.list)[0]
 	done := make(chan error)
-	go func() { done <- m.disconnect(g, func() {}) }()
+	go func() { done <- m.disconnect(g, revokeAndDelete, func() {}) }()
 	<-revoking
 	if err := m.connect("me@x.sk", builtinClient(), &oauth2.Token{AccessToken: "a2", RefreshToken: "r2"}, nil); !errors.Is(err, errBusy) {
 		t.Fatalf("reconnect during disconnect: %v, want errBusy", err)
@@ -72,7 +73,7 @@ func TestStaleDisconnectIsNoop(t *testing.T) {
 	stale := (*m.list)[0]
 	_ = m.connect("me@x.sk", builtinClient(), &oauth2.Token{AccessToken: "a2", RefreshToken: "r2"}, nil)
 
-	if err := m.disconnect(stale, func() {}); err != nil {
+	if err := m.disconnect(stale, revokeAndDelete, func() {}); err != nil {
 		t.Fatal(err)
 	}
 	if tok, err := loadToken("me@x.sk"); err != nil || tok.RefreshToken != "r2" {
@@ -132,5 +133,60 @@ func TestReconnectKeepsLabel(t *testing.T) {
 	g := (*m.list)[0]
 	if label, _, _ := g.status(); label != "Personal" || g.calendarNames()["wife@x.sk"] != "Janka" {
 		t.Errorf("after reconnect: label %q, names %v", label, g.calendarNames())
+	}
+}
+
+// A revoke Google doesn't confirm isn't a successful disconnect: the token and the account stay,
+// marked for a retry. Removing it from this computer only then works without Google.
+func TestDisconnectWhenRevokeFails(t *testing.T) {
+	m, cfg := testManager(t)
+	revokes := 0
+	status, body := http.StatusServiceUnavailable, ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		revokes++
+		w.WriteHeader(status)
+		_, _ = io.WriteString(w, body)
+	}))
+	defer srv.Close()
+	old := googleRevokeURL
+	googleRevokeURL = srv.URL
+	defer func() { googleRevokeURL = old }()
+
+	_ = m.connect("me@x.sk", builtinClient(), &oauth2.Token{AccessToken: "a", RefreshToken: "r"}, nil)
+	g := (*m.list)[0]
+	var re *revokeError
+	if err := m.disconnect(g, revokeAndDelete, func() {}); !errors.As(err, &re) {
+		t.Fatalf("disconnect with Google down: %v, want a revokeError", err)
+	}
+	if _, err := loadToken("me@x.sk"); err != nil || len(*m.list) != 1 || len(cfg.Accounts) != 1 || !g.revokeFailed() {
+		t.Fatalf("after a failed revoke: token err %v, %d sources, config %+v, revokeFailed %v", err, len(*m.list), cfg.Accounts, g.revokeFailed())
+	}
+
+	if err := m.disconnect(g, deleteOnly, func() {}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadToken("me@x.sk"); !errors.Is(err, keyring.ErrNotFound) || len(*m.list) != 0 || len(cfg.Accounts) != 0 {
+		t.Errorf("after removing locally: token err %v, %d sources, config %+v", err, len(*m.list), cfg.Accounts)
+	}
+	if revokes != 1 {
+		t.Errorf("%d revoke calls, want 1 (removing locally doesn't call Google)", revokes)
+	}
+
+	// A 400 for a bad request isn't proof the token is dead: keep it for a retry.
+	status, body = http.StatusBadRequest, `{"error": "invalid_request"}`
+	_ = m.connect("me@x.sk", builtinClient(), &oauth2.Token{AccessToken: "b", RefreshToken: "r"}, nil)
+	if err := m.disconnect((*m.list)[0], revokeAndDelete, func() {}); !errors.As(err, &re) {
+		t.Errorf("400 invalid_request: %v, want a revokeError", err)
+	}
+	if _, err := loadToken("me@x.sk"); err != nil {
+		t.Errorf("token gone after a failed revoke: %v", err)
+	}
+	// "invalid_token": already revoked or expired at Google, as good as revoked.
+	body = `{"error": "invalid_token", "error_description": "Token expired or revoked"}`
+	if err := m.disconnect((*m.list)[0], revokeAndDelete, func() {}); err != nil {
+		t.Errorf("revoke of an already invalid token: %v", err)
+	}
+	if _, err := loadToken("me@x.sk"); !errors.Is(err, keyring.ErrNotFound) {
+		t.Errorf("token kept after a confirmed revoke: %v", err)
 	}
 }

@@ -142,7 +142,7 @@ func TestDisconnectStopsTokenSaving(t *testing.T) {
 	done := make(chan error)
 	go func() { _, err := ts.Token(); done <- err }()
 	<-refreshing
-	if err := g.close(true); err != nil { // ...when the account is disconnected
+	if err := g.close(revokeAndDelete); err != nil { // ...when the account is disconnected
 		t.Fatal(err)
 	}
 	close(release)
@@ -168,7 +168,7 @@ func TestDisconnectReportsKeychainFailure(t *testing.T) {
 	keyring.MockInitWithError(errors.New("locked"))
 	defer keyring.MockInit()
 	g := brokenGoogleSource("me@x.sk", nil)
-	if err := g.close(true); err == nil {
+	if err := g.close(revokeAndDelete); err == nil {
 		t.Fatal("close succeeded with a failing keychain")
 	}
 	if _, _, errText := g.status(); !strings.Contains(errText, "locked") {

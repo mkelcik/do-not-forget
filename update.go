@@ -25,11 +25,13 @@ const (
 	releasesURL = "https://github.com/" + repo + "/releases/latest"
 )
 
-// startUpdater checks GitHub Releases at startup and every 6 hours and announces a new
-// version with a notification; its Aktualizovať button downloads, verifies (SHA256SUMS + Ed25519 signature, see signing.go)
-// and restarts. The reminder repeats every check until updated, and waits out a mute.
-// Dev builds never check, so `go run` can't get replaced by a release binary.
-func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool) {
+// startUpdater checks GitHub Releases a minute after start and every 6 hours. A new version
+// goes to available (Settings › About offers it, so it doesn't hinge on notifications being
+// allowed) and is announced with a notification whose button downloads, verifies (SHA256SUMS
+// + Ed25519 signature, see signing.go) and restarts. The notification repeats every check
+// until updated, and waits out a mute. Dev builds never check, so `go run` can't get replaced
+// by a release binary.
+func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool, available func(version string)) {
 	if version == "dev" {
 		return
 	}
@@ -52,9 +54,6 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 				continue // an install is in flight; a Check now would clobber its state
 			default:
 			}
-			if muted() {
-				continue
-			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute) // a stalled request must not stop the loop
 			rel, err := app.Updater.Check(ctx)
 			cancel()
@@ -65,17 +64,23 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			if rel == nil {
 				continue
 			}
+			available(rel.Version)
+			if muted() {
+				continue
+			}
 			body := T("update.body_install")
 			if !canSelfUpdate() {
 				body = T("update.body_download")
 			}
-			_ = notifier.SendNotificationWithActions(notifications.NotificationOptions{
+			if err := notifier.SendNotificationWithActions(notifications.NotificationOptions{
 				ID:         "update",
 				Title:      T("update.title", "version", rel.Version),
 				Body:       body,
 				CategoryID: "update",
 				Data:       map[string]any{"kind": "update"},
-			})
+			}); err != nil {
+				log.Printf("update notification: %v", err)
+			}
 		}
 	}()
 }

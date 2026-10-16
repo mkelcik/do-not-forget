@@ -163,6 +163,7 @@ func main() {
 		accounts = append(accounts, g)
 	}
 	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
+	updateVersion := ""         // a newer release found by the updater, guarded by mu
 	clientErr := ""             // saving the own client failed, guarded by mu
 	mgr := &accountManager{mu: &mu, list: &accounts, removing: map[string]bool{}, saveConfig: saveConfig}
 
@@ -230,7 +231,8 @@ func main() {
 		list := make([]map[string]any, 0, len(gs))
 		for _, g := range gs {
 			label, cals, errText := g.status()
-			list = append(list, map[string]any{"email": g.email, "label": label, "calendars": cals, "error": errText})
+			list = append(list, map[string]any{"email": g.email, "label": label, "calendars": cals, "error": errText,
+				"revokeFailed": g.revokeFailed()})
 		}
 		state["accounts"] = list
 		app.Event.Emit("accounts", state)
@@ -341,7 +343,17 @@ func main() {
 	})
 	// Disconnecting revokes the token at Google and deletes it from the keychain.
 	app.Event.On("account:remove", func(ev *application.CustomEvent) {
-		email, _ := ev.Data.(string)
+		var req struct {
+			Email string
+			Local bool // after a failed revoke: only delete it here
+		}
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		email, mode := req.Email, revokeAndDelete
+		if req.Local {
+			mode = deleteOnly
+		}
 		mu.Lock()
 		var g *googleSource
 		if i := slices.IndexFunc(accounts, func(a *googleSource) bool { return a.email == email }); i >= 0 {
@@ -352,7 +364,7 @@ func main() {
 			return
 		}
 		go func() {
-			if err := mgr.disconnect(g, emitAccounts); err != nil {
+			if err := mgr.disconnect(g, mode, emitAccounts); err != nil {
 				log.Printf("remove %s: %v", email, err)
 			}
 			refresh() // also re-emits the accounts
@@ -612,12 +624,12 @@ func main() {
 	// Switching swaps the translator and redraws everything that has text, no restart.
 	sendLanguage := func() {
 		mu.Lock()
-		setting, trayStyle, trayTitleMax := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax
+		setting, trayStyle, trayTitleMax, update := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax, updateVersion
 		mu.Unlock()
 		t := tr.Load()
 		app.Event.Emit("i18n", map[string]any{
 			"lang": t.code, "strings": t.strings, "languages": langs.languages(), "setting": setting,
-			"version": version, // for Settings › About
+			"version": version, "update": update, // for Settings › About
 			// Settings › Menu bar, offered on macOS only.
 			"trayStyle": trayStyle, "trayTitleMax": trayTitleMax, "platform": runtime.GOOS,
 		})
@@ -666,7 +678,31 @@ func main() {
 		mu.Lock()
 		defer mu.Unlock()
 		return cfg.mutedAt(time.Now())
+	}, func(v string) {
+		mu.Lock()
+		changed := updateVersion != v
+		updateVersion = v
+		mu.Unlock()
+		if changed {
+			sendLanguage() // carries the version for Settings › About
+		}
 	})
+	app.Event.On("update:install", func(*application.CustomEvent) { go installUpdate(app, notifier) })
+
+	// macOS drops notifications from an app that never asked; ask once it's running (the
+	// system prompts only the first time).
+	if runtime.GOOS == "darwin" {
+		app.Event.OnApplicationEvent(wevents.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+			go func() {
+				if ok, _ := notifier.CheckNotificationAuthorization(); ok {
+					return
+				}
+				if ok, err := notifier.RequestNotificationAuthorization(); !ok {
+					log.Printf("notifications not allowed: %v", err)
+				}
+			}()
+		})
+	}
 
 	go func() { // tray countdown and reminders tick faster than the fetch
 		for ; ; time.Sleep(10 * time.Second) {

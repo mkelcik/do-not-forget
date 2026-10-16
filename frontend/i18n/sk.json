@@ -61,6 +61,10 @@
   "settings.synced": "{{provider}} · synchronizované {{ago}}",
   "settings.disconnect": "Odpojiť",
   "settings.disconnecting": "Odpájam…",
+  "settings.revoke_failed": "Google nepotvrdil zrušenie prístupu, takže tam účet stále má prístup. Skús to znova, alebo ho odstráň len z tohto počítača a prístup zruš v Google účte.",
+  "settings.revoke_retry": "Skúsiť znova",
+  "settings.remove_local": "Odstrániť len z tohto počítača",
+  "settings.google_permissions": "Povolenia v Google účte",
   "settings.account_name": "Názov, napr. Práca",
   "settings.account_rename": "Pomenuj účet; zobrazí sa namiesto e-mailu",
   "settings.calendar_rename": "Premenuj kalendár len v appke; prázdne pole vráti pôvodný názov",
@@ -113,6 +117,7 @@
   "settings.autostart": "Spustiť po prihlásení",
   "settings.sync_every": "Synchronizovať každých",
   "settings.version": "verzia {{version}}",
+  "settings.update": "Aktualizovať na {{version}}",
 
   "alert.starting": "Meeting začína",
   "alert.started": "Meeting začal pred {{m}} min",

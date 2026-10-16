@@ -19,11 +19,14 @@ credits you.
 The parts that matter most:
 
 - OAuth sign-in (loopback redirect, PKCE, state) and token handling: tokens must only ever be
-  in the system keychain, and a disconnected account must not keep or regain access.
+  in the system keychain, a disconnected account must not keep or regain access, and a
+  disconnect Google didn't confirm must not look like one that succeeded.
 - Links from event data: only http(s) may be opened, and a link must not be presented as a
   meeting service (Meet, Zoom, Teams) it doesn't belong to.
 - HTML injection from event titles, descriptions or other calendar data into the app's windows.
-- The updater: downloads must be verified against `SHA256SUMS` and the Ed25519 signature.
+- The updater: downloads must be verified against `SHA256SUMS` and Ed25519 signatures, one of
+  them over a manifest binding the version, OS, architecture and hash (no downgrades or
+  cross-platform swaps).
 
 Not vulnerabilities: the Google client secret built into release binaries (desktop OAuth
 clients can't keep a secret; PKCE protects the sign-in), and anything that needs an attacker

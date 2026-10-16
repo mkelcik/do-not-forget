@@ -75,15 +75,26 @@ jobs:
           test -n "$UPDATE_SIGNING_KEY" || { echo "::error::UPDATE_SIGNING_KEY secret missing"; exit 1; }
           cd dist
           sha256sum * > SHA256SUMS
-          key="$(mktemp)"; trap 'rm -f "$key"' EXIT
+          key="$(mktemp)"; pub="$(mktemp)"; trap 'rm -f "$key" "$pub"' EXIT
           printf '%s\n' "$UPDATE_SIGNING_KEY" > "$key"
+          openssl pkey -in "$key" -pubout -out "$pub"
+          cat "$pub"   # log the public half to compare with signing.go
+          version="${GITHUB_REF_NAME#v}"
           for f in do-not-forget_*; do
+            # <asset>.sig: over the SHA-256 alone (0.8.0 and 0.8.1 check only this).
             # Ed25519 one-shot signing needs a sized input, so no pipe.
             openssl dgst -sha256 -binary -out "$f.digest" "$f"
             openssl pkeyutl -sign -inkey "$key" -rawin -in "$f.digest" -out "$f.sig"
             rm "$f.digest"
+            # <asset>.manifest.sig: version, platform and hash together, so an old archive can't
+            # pass as a newer version. Byte for byte updateManifest in signing.go.
+            platform="${f%%.*}"; platform="${platform#do-not-forget_}"   # darwin_arm64
+            printf 'do-not-forget update\nversion: %s\nos: %s\narch: %s\nasset: %s\nsha256: %s\n' \
+              "$version" "${platform%_*}" "${platform#*_}" "$f" "$(sha256sum "$f" | cut -d' ' -f1)" > "$f.manifest"
+            openssl pkeyutl -sign -inkey "$key" -rawin -in "$f.manifest" -out "$f.manifest.sig"
+            openssl pkeyutl -verify -pubin -inkey "$pub" -rawin -in "$f.manifest" -sigfile "$f.manifest.sig"
+            rm "$f.manifest"
           done
-          openssl pkey -in "$key" -pubout   # log the public half to compare with signing.go
           ls -l; cat SHA256SUMS
       - name: Create GitHub release
         env:

@@ -69,7 +69,11 @@ Git), or an own client entered in Settings.
 - Meeting services (Meet, Zoom, Teams) are recognised by exact host in `meetingService`,
   never by a substring of the URL.
 - Values inserted into HTML are escaped with `esc()`; translations are inserted as is.
-- Updates are verified against `SHA256SUMS` and an Ed25519 signature (`signing.go`).
+- Updates are verified against `SHA256SUMS` and Ed25519 signatures (`signing.go`): `<asset>.sig`
+  over the hash, and `<asset>.manifest.sig` over `updateManifest` (version, OS, arch, asset,
+  hash), which release.yml must produce byte for byte.
+- Disconnecting revokes at Google before deleting the token; a failed revoke keeps the token
+  and the account (`revokeError`) until the user retries or removes it locally.
 - A change to what data the app accesses, stores or sends (scopes, config fields, network
   hosts) must update `docs/privacy.html`; Google's verification relies on it being accurate.
 

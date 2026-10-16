@@ -58,6 +58,10 @@
   "settings.synced": "{{provider}} · synced {{ago}}",
   "settings.disconnect": "Disconnect",
   "settings.disconnecting": "Disconnecting…",
+  "settings.revoke_failed": "Google didn't confirm that access was revoked, so the account is still connected there. Try again, or remove it from this computer and revoke access in your Google Account.",
+  "settings.revoke_retry": "Try again",
+  "settings.remove_local": "Remove from this computer only",
+  "settings.google_permissions": "Google Account permissions",
   "settings.account_name": "Name, e.g. Work",
   "settings.account_rename": "Name this account; it's shown instead of the email",
   "settings.calendar_rename": "Rename this calendar in the app only; leave empty for its own name",
@@ -109,6 +113,7 @@
   "settings.autostart": "Start at login",
   "settings.sync_every": "Sync every",
   "settings.version": "version {{version}}",
+  "settings.update": "Update to {{version}}",
 
   "alert.starting": "Meeting starting",
   "alert.started": "Meeting started {{m}} min ago",

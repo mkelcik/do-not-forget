@@ -5,6 +5,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-16
+
+### Fixed
+
+- macOS: the app now asks for permission to show notifications; without it macOS dropped
+  reminders and update notices.
+
+### Added
+
+- Settings › About shows a newer version with an Update button, and the settings button gets a
+  dot, so updates don't depend on notifications.
+
+### Security
+
+- Updates check a signed manifest of version, OS, architecture and hash, so an old signed
+  archive can't be offered as a newer version.
+- A disconnect Google doesn't confirm keeps the account and its token, with a retry, removal
+  from this computer only, and a link to the Google Account permissions.
+
 ## [0.8.1] - 2026-10-16
 
 ### Added
@@ -42,6 +61,7 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/mkelcik/do-not-forget/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/mkelcik/do-not-forget/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/mkelcik/do-not-forget/releases/tag/v0.8.0

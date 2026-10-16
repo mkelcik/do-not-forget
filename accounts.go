@@ -44,7 +44,7 @@ func (m *accountManager) connect(email string, c oauthClient, tok *oauth2.Token,
 	m.mu.Lock()
 	for _, a := range *m.list {
 		if a.email == email {
-			_ = a.close(false)
+			_ = a.close(keepToken)
 		}
 	}
 	m.mu.Unlock()
@@ -92,7 +92,7 @@ func (m *accountManager) dropClients(usable func(clientID string) bool) {
 	defer m.mu.Unlock()
 	for i, g := range *m.list {
 		if g.client != nil && !usable(g.clientID) {
-			_ = g.close(false)
+			_ = g.close(keepToken)
 			b := brokenGoogleSource(g.email, errClientGone)
 			b.clientID = g.clientID
 			b.label, _, _ = g.status()
@@ -106,7 +106,7 @@ func (m *accountManager) dropClients(usable func(clientID string) bool) {
 // session the user clicked; if a reconnect has replaced it since, there's nothing left to do.
 // If the keychain refuses, the account stays listed with the error. marked runs once the
 // account shows as disconnecting.
-func (m *accountManager) disconnect(g *googleSource, marked func()) error {
+func (m *accountManager) disconnect(g *googleSource, mode closeMode, marked func()) error {
 	m.mu.Lock()
 	m.removing[g.email] = true
 	m.mu.Unlock()
@@ -125,7 +125,7 @@ func (m *accountManager) disconnect(g *googleSource, marked func()) error {
 	if !current {
 		return nil
 	}
-	if err := g.close(true); err != nil {
+	if err := g.close(mode); err != nil {
 		return err
 	}
 	m.saveConfig(func(c *Config) {

@@ -183,6 +183,9 @@ body.settings-open #settings { display: flex; }
 .cal-name:focus { outline: none; border-color: var(--accent); }
 .cal-name:focus::placeholder { color: var(--muted); }
 .add-status { padding: 0 12px 10px; font-size: 12px; color: var(--muted); }
+.revoke-failed { padding: 0 12px 10px 48px; font-size: 12px; }
+.revoke-failed small { display: block; color: var(--danger); margin-bottom: 4px; }
+.revoke-failed .link-btn { margin-left: -6px; margin-right: 6px; }
 .client { margin-top: 8px; }
 .client summary { padding: 10px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .client-body { display: grid; gap: 6px; padding: 0 12px 12px; border: 0 !important; }
@@ -204,6 +207,9 @@ footer { display: flex; justify-content: space-between; align-items: center; pad
   border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 footer button { padding: 2px 8px; border-radius: 6px; font-size: 18px; line-height: 1.2; }
 footer button:hover { background: var(--line); color: var(--text); }
+footer button.badge { position: relative; }
+footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--accent); } /* a newer version is out, see Settings › About */
 </style>
 </head>
 <body>
@@ -276,6 +282,7 @@ footer button:hover { background: var(--line); color: var(--text); }
     </div>
 
     <div class="about"><b>Do Not Forget</b><br><span id="version"></span><br>
+      <button class="link-btn" id="update" hidden></button><br id="update-br" hidden>
       <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget">github.com/mkelcik/do-not-forget</button></div>
   </div>
 </section>
@@ -433,6 +440,10 @@ function renderAccounts() {
           : a.error ? `<small class="error">${t("settings.account_error", { error: esc(a.error) })}</small>`
           : synced ? `<small>${t("settings.synced", { provider: "Google", ago: ago(synced) })}</small>` : ""}</div>
         <button class="link-btn danger" data-remove="${esc(a.email)}" ${removing.has(a.email) ? "disabled" : ""}>${t("settings.disconnect")}</button></div>
+      ${a.revokeFailed && !removing.has(a.email) ? `<div class="revoke-failed"><small>${t("settings.revoke_failed")}</small>
+        <div><button class="link-btn" data-remove="${esc(a.email)}">${t("settings.revoke_retry")}</button>
+          <button class="link-btn danger" data-remove-local="${esc(a.email)}">${t("settings.remove_local")}</button>
+          <button class="link-btn" data-url="https://myaccount.google.com/permissions">${t("settings.google_permissions")}</button></div></div>` : ""}
       ${a.calendars.map((c) => `<div class="cal"><input type="checkbox" data-email="${esc(a.email)}" data-cal="${esc(c.id)}"
           aria-label="${esc(c.name)}" ${c.on ? "checked" : ""}>
         <span class="dot" style="background:${esc(c.color)}"></span>
@@ -484,6 +495,10 @@ function fillSettings() {
   document.getElementById("language").innerHTML = [{ code: "", name: t("settings.language_system") }, ...i18n.languages]
     .map((l) => `<option value="${esc(l.code)}" ${l.code === i18n.setting ? "selected" : ""}>${esc(l.name)}</option>`).join("");
   document.getElementById("version").textContent = t("settings.version", { version: i18n.version });
+  const upd = document.getElementById("update"); // found by the updater; doesn't need notifications
+  upd.hidden = document.getElementById("update-br").hidden = !i18n.update;
+  upd.textContent = i18n.update ? t("settings.update", { version: i18n.update }) : "";
+  document.getElementById("open-settings").classList.toggle("badge", !!i18n.update);
   document.getElementById("tray-style-opt").hidden = i18n.platform !== "darwin"; // other trays take no text
   document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b.dataset.style === i18n.trayStyle));
   document.getElementById("tray-length-opt").hidden = i18n.platform !== "darwin" || i18n.trayStyle === "icon";
@@ -514,6 +529,7 @@ document.addEventListener("click", (ev) => {
   if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
   if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
   if (t.closest("#add-google")) return Events.Emit("account:add");
+  if (t.closest("#update")) return Events.Emit("update:install");
   if (t.closest("#client-save")) {
     const id = document.getElementById("client-id"), secret = document.getElementById("client-secret");
     Events.Emit("client:set", { id: id.value, secret: secret.value });
@@ -521,8 +537,10 @@ document.addEventListener("click", (ev) => {
     return;
   }
   if (t.closest("#client-reset")) return Events.Emit("client:set", { id: "", secret: "" });
+  const local = t.closest("[data-remove-local]");
+  if (local) return Events.Emit("account:remove", { email: local.dataset.removeLocal, local: true });
   const remove = t.closest("[data-remove]");
-  if (remove) return Events.Emit("account:remove", remove.dataset.remove);
+  if (remove) return Events.Emit("account:remove", { email: remove.dataset.remove, local: false });
   const sw = t.closest(".switch");
   if (sw) {
     const on = sw.classList.toggle("on"); // mock: not persisted yet
