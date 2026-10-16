@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-16
+
 ### Added
 
 - Settings now work and are saved: reminders on or off, how many minutes before, a second one
@@ -68,7 +70,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/mkelcik/do-not-forget/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/mkelcik/do-not-forget/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/mkelcik/do-not-forget/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/mkelcik/do-not-forget/releases/tag/v0.8.0
