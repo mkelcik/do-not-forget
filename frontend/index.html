@@ -188,7 +188,7 @@ footer button:hover { background: var(--line); color: var(--text); }
   <span><button id="refresh" data-i18n-title="footer.refresh">⟳</button><button id="open-settings" data-i18n-title="footer.settings">⚙</button></span>
 </footer>
 
-<!-- Settings: design mock, not wired to the backend yet (theme works locally). -->
+<!-- Settings: mostly a design mock; language and menu bar are wired, theme works locally. -->
 <section id="settings">
   <div class="s-head"><button id="close-settings" data-i18n-title="settings.back">‹</button><h1 data-i18n="settings.title"></h1></div>
   <div class="s-body">
@@ -234,7 +234,7 @@ footer button:hover { background: var(--line); color: var(--text); }
       <div class="opt"><span data-i18n="settings.language"></span><select id="language"></select></div>
       <div class="opt"><span><span data-i18n="settings.week_tab"></span><small data-i18n="settings.week_tab_desc"></small></span><span class="switch on" id="week-toggle"></span></div>
       <div class="opt"><span data-i18n="settings.show_declined"></span><span class="switch on"></span></div>
-      <div class="opt"><span><span data-i18n="settings.tray_countdown"></span><small data-i18n="settings.tray_countdown_desc"></small></span><span class="switch on"></span></div>
+      <div class="opt" id="tray-style-opt" hidden><span><span data-i18n="settings.tray_style"></span><small data-i18n="settings.tray_style_desc"></small></span><div class="seg" id="tray-style"><button data-style="icon" data-i18n="settings.tray_style_icon"></button><button data-style="both" data-i18n="settings.tray_style_both"></button><button data-style="text" data-i18n="settings.tray_style_text"></button></div></div>
     </div>
 
     <h2 data-i18n="settings.general"></h2>
@@ -390,6 +390,8 @@ function fillSettings() {
   document.getElementById("language").innerHTML = [{ code: "", name: t("settings.language_system") }, ...i18n.languages]
     .map((l) => `<option value="${esc(l.code)}" ${l.code === i18n.setting ? "selected" : ""}>${esc(l.name)}</option>`).join("");
   document.getElementById("version").textContent = t("settings.version", { version: i18n.version });
+  document.getElementById("tray-style-opt").hidden = i18n.platform !== "darwin"; // other trays take no text
+  document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b.dataset.style === i18n.trayStyle));
 }
 document.getElementById("language").addEventListener("change", (ev) => setLanguage(ev.target.value));
 onLanguage(() => { fillSettings(); render(); });
@@ -425,6 +427,12 @@ document.addEventListener("click", (ev) => {
     if (theme.dataset.theme) document.documentElement.dataset.theme = theme.dataset.theme;
     else delete document.documentElement.dataset.theme;
     return;
+  }
+  const style = t.closest("#tray-style button");
+  if (style) {
+    i18n.trayStyle = style.dataset.style;
+    document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b === style));
+    return Events.Emit("tray:style", style.dataset.style);
   }
   const link = t.closest("[data-url]");
   if (link) return Browser.OpenURL(link.dataset.url);

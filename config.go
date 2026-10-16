@@ -19,7 +19,12 @@ type Config struct {
 	Language string `json:"language"`
 	// MutedUntil silences reminders and alerts until then; zero means not muted.
 	MutedUntil time.Time `json:"mutedUntil"`
+	// TrayStyle is what the macOS menu bar shows for today's next meeting: "icon", "text" or
+	// "both" (icon + title and countdown). Other systems' trays only take an icon.
+	TrayStyle string `json:"trayStyle"`
 }
+
+func validTrayStyle(s string) bool { return s == "icon" || s == "text" || s == "both" }
 
 // muteForever is "until I turn it back on".
 var muteForever = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -42,9 +47,12 @@ func loadConfig() Config {
 	_ = os.MkdirAll(dir, 0o700)
 	_ = os.Chmod(dir, 0o700) //nolint:gosec // G302: a directory needs the x bit; 0700 is owner-only
 
-	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true}
+	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true, TrayStyle: "both"}
 	if b, err := os.ReadFile(configPath()); err == nil {
 		_ = json.Unmarshal(b, &c)
+	}
+	if !validTrayStyle(c.TrayStyle) {
+		c.TrayStyle = "both"
 	}
 	return c
 }

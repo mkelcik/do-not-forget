@@ -5,7 +5,7 @@ import { Events } from "/wails/runtime.js";
 
 let strings = {};
 const listeners = [];
-export const i18n = { lang: "en", languages: [], setting: "", version: "" };
+export const i18n = { lang: "en", languages: [], setting: "", version: "", trayStyle: "both", platform: "" };
 
 // t("in.min", { m: 5 }); a numeric `count` picks the CLDR plural form (key_one, key_few, …).
 // Translations carry no markup (CI checks), but vars are inserted as given: escape them.
@@ -38,7 +38,8 @@ export function setLanguage(code) { Events.Emit("i18n:set", code); }
 
 Events.On("i18n", ({ data }) => {
   ({ strings } = data);
-  Object.assign(i18n, { lang: data.lang, languages: data.languages, setting: data.setting, version: data.version });
+  Object.assign(i18n, { lang: data.lang, languages: data.languages, setting: data.setting, version: data.version,
+    trayStyle: data.trayStyle, platform: data.platform });
   document.documentElement.lang = data.lang;
   applyStatic();
   listeners.forEach((cb) => cb());

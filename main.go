@@ -16,7 +16,6 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	wevents "github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/icons"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
@@ -97,25 +96,57 @@ func main() {
 		sources = append(sources, &dummySource{path: *dummyPath, base: time.Now()})
 	}
 
+	// The tray icon: a template on macOS, so it follows a light or dark menu bar.
+	// ponytail: the muted icon is drawn for dark panels only, see trayIcon.
+	setTrayIcon := func(muted bool) {
+		if runtime.GOOS == "darwin" && !muted {
+			tray.SetTemplateIcon(trayIcon(false))
+		} else {
+			tray.SetIcon(trayIcon(muted))
+		}
+	}
+	trayIconPos := application.IconPosition(application.NSImageLeading) // guarded by mu
 	updateTray := func() {
+		now := time.Now()
 		mu.Lock()
-		next := nextEvent(events, time.Now())
-		muted := muteLabel(cfg.MutedUntil, time.Now())
+		next := nextEvent(events, now)
+		muted := muteLabel(cfg.MutedUntil, now)
+		style := cfg.TrayStyle
 		mu.Unlock()
 		title, sub := T("tray.none"), ""
 		if next != nil {
 			title = next.Title
 			sub = fmt.Sprintf(`%s · %s – %s · <span style="color:%s">●</span> %s`,
-				untilText(next, time.Now()), next.Start.Format("15:04"), next.End.Format("15:04"),
+				untilText(next, now), next.Start.Format("15:04"), next.End.Format("15:04"),
 				next.Color, html.EscapeString(next.Calendar))
-			if runtime.GOOS == "darwin" {
-				tray.SetLabel(next.Title + " · " + untilText(next, time.Now()))
-			}
 		}
 		if muted != "" {
 			sub += "<br>🔕 " + muted
 		}
 		setTrayTooltip(tray, html.EscapeString(title), sub)
+
+		if runtime.GOOS != "darwin" {
+			return
+		}
+		// Menu bar text only for a meeting today (or still running); otherwise just the icon.
+		label := ""
+		if next != nil && style != "icon" && daysBetween(now, next.Start) <= 0 {
+			label = next.Title + " · " + untilText(next, now)
+		}
+		tray.SetLabel(label)
+		// Text only hides the icon, unless there's no text or the icon has to show the mute.
+		pos := application.IconPosition(application.NSImageLeading)
+		if style == "text" && label != "" && muted == "" {
+			pos = application.NSImageNone
+		}
+		mu.Lock()
+		changed := pos != trayIconPos
+		trayIconPos = pos
+		mu.Unlock()
+		if changed { // Wails applies the position with the next icon
+			tray.SetIconPosition(pos)
+			setTrayIcon(muted != "")
+		}
 	}
 	refresh := func() {
 		now := time.Now()
@@ -267,11 +298,7 @@ func main() {
 		muted, label := cfg.mutedAt(now), muteLabel(cfg.MutedUntil, now)
 		wasMuted = muted
 		mu.Unlock()
-		if runtime.GOOS == "darwin" && !muted {
-			tray.SetTemplateIcon(icons.SystrayMacTemplate)
-		} else {
-			tray.SetIcon(trayIcon(muted))
-		}
+		setTrayIcon(muted)
 		menu := app.NewMenu()
 		if muted {
 			menu.Add("🔕 " + label).SetEnabled(false)
@@ -296,12 +323,14 @@ func main() {
 	// Switching swaps the translator and redraws everything that has text, no restart.
 	sendLanguage := func() {
 		mu.Lock()
-		setting := cfg.Language
+		setting, trayStyle := cfg.Language, cfg.TrayStyle
 		mu.Unlock()
 		t := tr.Load()
 		app.Event.Emit("i18n", map[string]any{
 			"lang": t.code, "strings": t.strings, "languages": langs.languages(), "setting": setting,
 			"version": version, // for Settings › About
+			// Settings › Menu bar, offered on macOS only.
+			"trayStyle": trayStyle, "platform": runtime.GOOS,
 		})
 	}
 	applyLanguage := func() {
@@ -330,6 +359,12 @@ func main() {
 		code, _ := ev.Data.(string)
 		saveConfig(func(c *Config) { c.Language = code })
 		applyLanguage()
+	})
+	app.Event.On("tray:style", func(ev *application.CustomEvent) {
+		if style, _ := ev.Data.(string); validTrayStyle(style) {
+			saveConfig(func(c *Config) { c.TrayStyle = style })
+			updateTray()
+		}
 	})
 
 	startUpdater(app, notifier, func() bool {
