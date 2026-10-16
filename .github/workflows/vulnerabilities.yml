@@ -1,0 +1,25 @@
+name: Vulnerabilities
+
+# A new advisory can hit code that hasn't changed, so main is checked every night too.
+# A failure here is mailed to the repository owner by GitHub.
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install GTK4 / WebKitGTK headers (Wails uses cgo on Linux)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
+      - run: make tools
+      - run: make vuln

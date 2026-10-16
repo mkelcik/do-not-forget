@@ -24,3 +24,28 @@ jobs:
         run: go test -run 'TestTranslationFiles|TestTranslator' -v .
       - run: make tools
       - run: make ci
+
+  # Linux above runs everything; these build and test the other desktop platforms, which nobody
+  # develops on day to day. Lint and govulncheck don't depend on the OS, so they stay above.
+  platforms:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./...
+      - name: Test
+        shell: bash
+        run: |
+          race=""
+          [ "$RUNNER_OS" = macOS ] && race=-race   # the race detector needs cgo; Windows builds without it
+          go test $race -count=1 ./...
+      - name: Production build
+        shell: bash
+        run: go build -tags production -o "$RUNNER_TEMP/do-not-forget" .
