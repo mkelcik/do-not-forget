@@ -98,3 +98,11 @@ func TestTruncateTitle(t *testing.T) {
 		}
 	}
 }
+
+func TestWithLink(t *testing.T) {
+	evs := []Event{{ID: "a", Link: "https://meet.google.com/abc-defg-hij"}, {ID: "b"}, {ID: "c", Link: "https://zoom.us/j/1"}}
+	got := withLink(evs)
+	if len(got) != 2 || got[0].ID != "a" || got[1].ID != "c" || len(evs) != 3 || evs[1].ID != "b" {
+		t.Errorf("withLink: %+v (input now %+v)", got, evs)
+	}
+}

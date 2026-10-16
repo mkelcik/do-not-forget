@@ -164,6 +164,7 @@ func main() {
 	}
 	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
 	updateVersion := ""         // a newer release found by the updater, guarded by mu
+	autostartError := ""        // the last start-at-login change that failed, guarded by mu
 	clientErr := ""             // saving the own client failed, guarded by mu
 	mgr := &accountManager{mu: &mu, list: &accounts, removing: map[string]bool{}, saveConfig: saveConfig}
 
@@ -237,11 +238,13 @@ func main() {
 		state["accounts"] = list
 		app.Event.Emit("accounts", state)
 	}
+	var lastSync time.Time // guarded by mu; the ticker below refreshes every SyncMinutes
 	refresh := func() {
 		now := time.Now()
 		y, m, d := now.Date()
 		today := time.Date(y, m, d, 0, 0, 0, 0, now.Location())
 		mu.Lock()
+		lastSync = now
 		var sources []Source
 		if dummy != nil {
 			sources = append(sources, dummy)
@@ -484,11 +487,6 @@ func main() {
 			refresh()
 		}()
 	})
-	go func() {
-		for ; ; time.Sleep(time.Minute) {
-			refresh()
-		}
-	}()
 	// Notification buttons; re-registered when the language changes.
 	registerCategories := func() {
 		_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
@@ -540,7 +538,11 @@ func main() {
 		}
 		// The ticker runs every 10s, so "starting within 15s" fires once, right at the start;
 		// the 3 min grace still catches it after waking from sleep.
-		due := dueNotifications(events, time.Now(), 15*time.Second, 3*time.Minute, alerted)
+		evs := events
+		if cfg.OnlyWithLink {
+			evs = withLink(evs)
+		}
+		due := dueNotifications(evs, time.Now(), 15*time.Second, 3*time.Minute, alerted)
 		mu.Unlock()
 		if len(due) > 0 {
 			showAlert(due)
@@ -558,18 +560,31 @@ func main() {
 		}()
 	}
 
+	sentAtStart := map[string]bool{} // "also at the start" notifications, guarded by mu
 	notify := func() {
 		now := time.Now()
 		mu.Lock()
-		if cfg.NotifyMinutes <= 0 || cfg.mutedAt(now) {
+		if !cfg.Notify || cfg.mutedAt(now) {
 			mu.Unlock()
 			return
 		}
-		due := dueNotifications(events, now, time.Duration(cfg.NotifyMinutes)*time.Minute, 0, sent)
+		evs := events
+		if cfg.OnlyWithLink {
+			evs = withLink(evs)
+		}
+		due := dueNotifications(evs, now, time.Duration(cfg.NotifyMinutes)*time.Minute, 0, sent)
+		var atStart []Event
+		if cfg.NotifyAtStart { // like the alert: once, right at the start, or soon after waking
+			atStart = dueNotifications(evs, now, 15*time.Second, 3*time.Minute, sentAtStart)
+		}
+		silent := !cfg.Sound
 		mu.Unlock()
-		for _, e := range due {
-			title, body := notificationText(e, now)
-			opts := notifications.NotificationOptions{ID: e.ID, Title: title, Body: body, Data: map[string]any{"link": e.Link}}
+		send := func(e Event, id string, textAt time.Time, sentMap map[string]bool) {
+			title, body := notificationText(e, textAt)
+			opts := notifications.NotificationOptions{ID: id, Title: title, Body: body, Data: map[string]any{"link": e.Link}}
+			if silent {
+				opts.Sound = &notifications.NotificationSound{Silent: true}
+			}
 			var err error
 			if e.Link != "" {
 				opts.CategoryID = "meeting"
@@ -578,11 +593,17 @@ func main() {
 				err = notifier.SendNotification(opts)
 			}
 			if err != nil {
-				log.Printf("notify %s: %v", e.ID, err)
+				log.Printf("notify %s: %v", id, err)
 				mu.Lock()
-				delete(sent, sentKey(e)) // retry on the next tick
+				delete(sentMap, sentKey(e)) // retry on the next tick
 				mu.Unlock()
 			}
+		}
+		for _, e := range due {
+			send(e, e.ID, now, sent)
+		}
+		for _, e := range atStart {
+			send(e, e.ID+"@start", e.Start, sentAtStart) // reads "in progress until …"
 		}
 	}
 
@@ -625,13 +646,19 @@ func main() {
 	sendLanguage := func() {
 		mu.Lock()
 		setting, trayStyle, trayTitleMax, update := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax, updateVersion
+		settings, autostartErr := cfg.settings(), autostartError
 		mu.Unlock()
+		autostart, err := app.Autostart.IsEnabled()
+		if err != nil {
+			log.Printf("autostart status: %v", err)
+		}
 		t := tr.Load()
 		app.Event.Emit("i18n", map[string]any{
 			"lang": t.code, "strings": t.strings, "languages": langs.languages(), "setting": setting,
 			"version": version, "update": update, // for Settings › About
 			// Settings › Menu bar, offered on macOS only.
 			"trayStyle": trayStyle, "trayTitleMax": trayTitleMax, "platform": runtime.GOOS,
+			"settings": settings, "autostart": autostart, "autostartError": autostartErr,
 		})
 	}
 	applyLanguage := func() {
@@ -660,6 +687,43 @@ func main() {
 		code, _ := ev.Data.(string)
 		saveConfig(func(c *Config) { c.Language = code })
 		applyLanguage()
+	})
+	// Settings: one event for the plain options (see Config.set); every window gets the result.
+	app.Event.On("settings:set", func(ev *application.CustomEvent) {
+		var req struct {
+			Key   string
+			Value json.RawMessage
+		}
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		var err error
+		saveConfig(func(c *Config) { err = c.set(req.Key, req.Value) })
+		if err != nil {
+			log.Printf("settings: %v", err)
+		}
+		sendLanguage()
+	})
+	// Start at login is the system's registration (login item, Run key, autostart .desktop), not
+	// a config field, so Settings always shows what will really happen.
+	app.Event.On("autostart:set", func(ev *application.CustomEvent) {
+		on, _ := ev.Data.(bool)
+		go func() {
+			var err error
+			if on {
+				err = app.Autostart.Enable()
+			} else {
+				err = app.Autostart.Disable()
+			}
+			mu.Lock()
+			autostartError = ""
+			if err != nil {
+				log.Printf("autostart: %v", err)
+				autostartError = err.Error()
+			}
+			mu.Unlock()
+			sendLanguage()
+		}()
 	})
 	app.Event.On("tray:length", func(ev *application.CustomEvent) {
 		if n, _ := ev.Data.(float64); validTrayTitleMax(int(n)) { // JSON numbers arrive as float64
@@ -711,6 +775,12 @@ func main() {
 			mu.Unlock()
 			if expired {
 				applyMute()
+			}
+			mu.Lock()
+			syncDue := time.Since(lastSync) >= time.Duration(cfg.SyncMinutes)*time.Minute
+			mu.Unlock()
+			if syncDue {
+				go refresh()
 			}
 			updateTray()
 			notify()

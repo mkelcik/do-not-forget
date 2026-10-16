@@ -151,6 +151,8 @@ body.settings-open #settings { display: flex; }
   border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px #0004; }
 .switch.on { background: var(--personal); }
 .switch.on::after { transform: translateX(14px); }
+.opt.disabled { opacity: .45; pointer-events: none; } /* depends on a switch that's off */
+.opt small.error { color: var(--danger); }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .seg button { padding: 3px 10px; font-size: 12px; }
 .seg button + button { border-left: 1px solid var(--line); }
@@ -225,7 +227,7 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
   <span><button id="refresh" data-i18n-title="footer.refresh">⟳</button><button id="open-settings" data-i18n-title="footer.settings">⚙</button></span>
 </footer>
 
-<!-- Settings: mostly a design mock; language and menu bar are wired, theme works locally. -->
+<!-- Settings: every control is saved by the backend (config.json; start at login is the system's). -->
 <section id="settings">
   <div class="s-head"><button id="close-settings" data-i18n-title="settings.back">‹</button><h1 data-i18n="settings.title"></h1></div>
   <div class="s-body">
@@ -257,28 +259,28 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
 
     <h2 data-i18n="settings.notifications"></h2>
     <div class="group">
-      <div class="opt"><span data-i18n="settings.notify"></span><span class="switch on"></span></div>
-      <div class="opt"><span data-i18n="settings.notify_minutes"></span><select data-minutes="1,5,10,15" data-selected="5"></select></div>
-      <div class="opt"><span><span data-i18n="settings.notify_start"></span><small data-i18n="settings.notify_start_desc"></small></span><span class="switch"></span></div>
-      <div class="opt"><span><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreen_desc"></small></span><span class="switch on"></span></div>
-      <div class="opt"><span><span data-i18n="settings.only_links"></span><small data-i18n="settings.only_links_desc"></small></span><span class="switch"></span></div>
-      <div class="opt"><span data-i18n="settings.sound"></span><span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.notify"></span><span class="switch" data-setting="notify"></span></div>
+      <div class="opt" data-needs="notify"><span data-i18n="settings.notify_minutes"></span><select data-setting="notifyMinutes" data-minutes="1,5,10,15"></select></div>
+      <div class="opt" data-needs="notify"><span><span data-i18n="settings.notify_start"></span><small data-i18n="settings.notify_start_desc"></small></span><span class="switch" data-setting="notifyAtStart"></span></div>
+      <div class="opt" data-needs="notify"><span data-i18n="settings.sound"></span><span class="switch" data-setting="sound"></span></div>
+      <div class="opt"><span><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreen_desc"></small></span><span class="switch" data-setting="fullscreenAlert"></span></div>
+      <div class="opt"><span><span data-i18n="settings.only_links"></span><small data-i18n="settings.only_links_desc"></small></span><span class="switch" data-setting="onlyWithLink"></span></div>
     </div>
 
     <h2 data-i18n="settings.appearance"></h2>
     <div class="group">
-      <div class="opt"><span data-i18n="settings.theme"></span><div class="seg" id="theme"><button data-theme="" class="on" data-i18n="settings.theme_system"></button><button data-theme="light" data-i18n="settings.theme_light"></button><button data-theme="dark" data-i18n="settings.theme_dark"></button></div></div>
+      <div class="opt"><span data-i18n="settings.theme"></span><div class="seg" id="theme"><button data-theme="" data-i18n="settings.theme_system"></button><button data-theme="light" data-i18n="settings.theme_light"></button><button data-theme="dark" data-i18n="settings.theme_dark"></button></div></div>
       <div class="opt"><span data-i18n="settings.language"></span><select id="language"></select></div>
-      <div class="opt"><span><span data-i18n="settings.week_tab"></span><small data-i18n="settings.week_tab_desc"></small></span><span class="switch on" id="week-toggle"></span></div>
-      <div class="opt"><span data-i18n="settings.show_declined"></span><span class="switch on"></span></div>
+      <div class="opt"><span><span data-i18n="settings.week_tab"></span><small data-i18n="settings.week_tab_desc"></small></span><span class="switch" data-setting="weekTab"></span></div>
+      <div class="opt"><span data-i18n="settings.show_declined"></span><span class="switch" data-setting="showDeclined"></span></div>
       <div class="opt" id="tray-style-opt" hidden><span><span data-i18n="settings.tray_style"></span><small data-i18n="settings.tray_style_desc"></small></span><div class="seg" id="tray-style"><button data-style="icon" data-i18n="settings.tray_style_icon"></button><button data-style="both" data-i18n="settings.tray_style_both"></button><button data-style="text" data-i18n="settings.tray_style_text"></button></div></div>
       <div class="opt" id="tray-length-opt" hidden><span><span data-i18n="settings.tray_length"></span><small data-i18n="settings.tray_length_desc"></small></span><select id="tray-length"></select></div>
     </div>
 
     <h2 data-i18n="settings.general"></h2>
     <div class="group">
-      <div class="opt"><span data-i18n="settings.autostart"></span><span class="switch on"></span></div>
-      <div class="opt"><span data-i18n="settings.sync_every"></span><select data-minutes="1,5,15" data-selected="1"></select></div>
+      <div class="opt"><span><span data-i18n="settings.autostart"></span><small class="error" id="autostart-error" hidden></small></span><span class="switch" id="autostart"></span></div>
+      <div class="opt"><span data-i18n="settings.sync_every"></span><select data-setting="syncMinutes" data-minutes="1,5,15"></select></div>
     </div>
 
     <div class="about"><b>Do Not Forget</b><br><span id="version"></span><br>
@@ -306,7 +308,7 @@ const until = (d) => {
   return m < 60 ? t("in.min", { m }) : t("in.hmin", { h: Math.floor(m / 60), m: m % 60 });
 };
 const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
-const visible = () => events.filter((e) => !hidden.has(e.calendar));
+const visible = () => events.filter((e) => !hidden.has(e.calendar) && (i18n.settings.showDeclined || e.response !== "no"));
 const rsvp = (e) => `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
   `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>`;
 const agoMin = (m) => m < 1 ? t("ago.now") : t("ago.min", { m });
@@ -487,11 +489,23 @@ document.getElementById("accounts").addEventListener("change", (ev) => {
 // Settings texts that need values: accounts, minute options, the language list.
 function fillSettings() {
   renderAccounts();
+  // Saved settings into the controls; options that need a switch that's off are dimmed.
+  const s = i18n.settings;
   document.querySelectorAll("select[data-minutes]").forEach((sel) => {
-    const cur = sel.value || sel.dataset.selected;
+    const cur = String(s[sel.dataset.setting]);
     sel.innerHTML = sel.dataset.minutes.split(",").map((m) =>
       `<option value="${m}" ${m === cur ? "selected" : ""}>${t("dur.min", { m })}</option>`).join("");
   });
+  document.querySelectorAll(".switch[data-setting]").forEach((sw) => sw.classList.toggle("on", !!s[sw.dataset.setting]));
+  document.querySelectorAll("[data-needs]").forEach((el) => el.classList.toggle("disabled", !s[el.dataset.needs]));
+  document.querySelectorAll("#theme button").forEach((b) => b.classList.toggle("on", b.dataset.theme === (s.theme || "")));
+  document.getElementById("autostart").classList.toggle("on", i18n.autostart);
+  const autoErr = document.getElementById("autostart-error");
+  autoErr.hidden = !i18n.autostartError;
+  autoErr.textContent = i18n.autostartError;
+  const week = document.getElementById("week-tab");
+  week.hidden = !s.weekTab;
+  if (week.hidden && day === 7) document.querySelector('.tabs button[data-day="0"]').click();
   document.getElementById("language").innerHTML = [{ code: "", name: t("settings.language_system") }, ...i18n.languages]
     .map((l) => `<option value="${esc(l.code)}" ${l.code === i18n.setting ? "selected" : ""}>${esc(l.name)}</option>`).join("");
   document.getElementById("version").textContent = t("settings.version", { version: i18n.version });
@@ -510,6 +524,8 @@ document.getElementById("tray-length").addEventListener("change", (ev) => {
   Events.Emit("tray:length", i18n.trayTitleMax);
 });
 document.getElementById("language").addEventListener("change", (ev) => setLanguage(ev.target.value));
+document.querySelectorAll("select[data-setting]").forEach((sel) => sel.addEventListener("change", () =>
+  Events.Emit("settings:set", { key: sel.dataset.setting, value: Number(sel.value) })));
 onLanguage(() => { fillSettings(); render(); });
 
 document.addEventListener("click", (ev) => {
@@ -541,22 +557,12 @@ document.addEventListener("click", (ev) => {
   if (local) return Events.Emit("account:remove", { email: local.dataset.removeLocal, local: true });
   const remove = t.closest("[data-remove]");
   if (remove) return Events.Emit("account:remove", { email: remove.dataset.remove, local: false });
-  const sw = t.closest(".switch");
-  if (sw) {
-    const on = sw.classList.toggle("on"); // mock: not persisted yet
-    if (sw.id === "week-toggle") {
-      document.getElementById("week-tab").hidden = !on;
-      if (!on && day === 7) document.querySelector('.tabs button[data-day="0"]').click();
-    }
-    return;
-  }
+  // Switches flip at once; the backend saves and sends the settings back to every window.
+  const sw = t.closest(".switch[data-setting]");
+  if (sw) return Events.Emit("settings:set", { key: sw.dataset.setting, value: sw.classList.toggle("on") });
+  if (t.closest("#autostart")) return Events.Emit("autostart:set", t.closest("#autostart").classList.toggle("on"));
   const theme = t.closest("#theme button");
-  if (theme) {
-    document.querySelectorAll("#theme button").forEach((b) => b.classList.toggle("on", b === theme));
-    if (theme.dataset.theme) document.documentElement.dataset.theme = theme.dataset.theme;
-    else delete document.documentElement.dataset.theme;
-    return;
-  }
+  if (theme) return Events.Emit("settings:set", { key: "theme", value: theme.dataset.theme });
   const style = t.closest("#tray-style button");
   if (style) {
     i18n.trayStyle = style.dataset.style;

@@ -5,7 +5,8 @@ import { Events } from "/wails/runtime.js";
 
 let strings = {};
 const listeners = [];
-export const i18n = { lang: "en", languages: [], setting: "", version: "", trayStyle: "both", trayTitleMax: 25, platform: "", update: "" };
+export const i18n = { lang: "en", languages: [], setting: "", version: "", trayStyle: "both", trayTitleMax: 25, platform: "", update: "",
+  settings: { showDeclined: true, weekTab: true }, autostart: false, autostartError: "" };
 
 // t("in.min", { m: 5 }); a numeric `count` picks the CLDR plural form (key_one, key_few, …).
 // Translations carry no markup (CI checks), but vars are inserted as given: escape them.
@@ -45,7 +46,11 @@ export function setLanguage(code) { Events.Emit("i18n:set", code); }
 Events.On("i18n", ({ data }) => {
   ({ strings } = data);
   Object.assign(i18n, { lang: data.lang, languages: data.languages, setting: data.setting, version: data.version,
-    trayStyle: data.trayStyle, trayTitleMax: data.trayTitleMax, platform: data.platform, update: data.update });
+    trayStyle: data.trayStyle, trayTitleMax: data.trayTitleMax, platform: data.platform, update: data.update,
+    settings: data.settings, autostart: data.autostart, autostartError: data.autostartError });
+  // The theme applies to every window (popup and alert), so it's set here rather than in Settings.
+  if (data.settings.theme) document.documentElement.dataset.theme = data.settings.theme;
+  else delete document.documentElement.dataset.theme;
   document.documentElement.lang = data.lang;
   applyStatic();
   listeners.forEach((cb) => cb());

@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 )
 
@@ -11,10 +13,24 @@ import (
 type Config struct {
 	Width  int `json:"width"`
 	Height int `json:"height"`
-	// NotifyMinutes is how long before a meeting to send a reminder; 0 turns reminders off.
-	NotifyMinutes int `json:"notifyMinutes"`
+	// Notify sends a reminder NotifyMinutes before each meeting (1, 5, 10 or 15).
+	Notify        bool `json:"notify"`
+	NotifyMinutes int  `json:"notifyMinutes"`
+	// NotifyAtStart sends a second notification when the meeting starts.
+	NotifyAtStart bool `json:"notifyAtStart"`
 	// FullscreenAlert covers the screen when a meeting starts, for when a notification gets missed.
 	FullscreenAlert bool `json:"fullscreenAlert"`
+	// OnlyWithLink limits reminders and the alert to meetings with a Meet, Zoom or Teams link.
+	OnlyWithLink bool `json:"onlyWithLink"`
+	// Sound plays the system sound with notifications.
+	Sound bool `json:"sound"`
+	// Theme is "", "light" or "dark"; "" follows the system.
+	Theme string `json:"theme"`
+	// WeekTab shows the 7-day tab; ShowDeclined lists declined events (struck through).
+	WeekTab      bool `json:"weekTab"`
+	ShowDeclined bool `json:"showDeclined"`
+	// SyncMinutes is how often calendars are fetched (1, 5 or 15).
+	SyncMinutes int `json:"syncMinutes"`
 	// Language is a BCP 47 tag from frontend/i18n, or "" to follow the system.
 	Language string `json:"language"`
 	// MutedUntil silences reminders and alerts until then; zero means not muted.
@@ -72,9 +88,33 @@ func loadConfig() Config {
 	_ = os.MkdirAll(dir, 0o700)
 	_ = os.Chmod(dir, 0o700) //nolint:gosec // G302: a directory needs the x bit; 0700 is owner-only
 
-	c := Config{Width: 380, Height: 560, NotifyMinutes: 5, FullscreenAlert: true, TrayStyle: "both", TrayTitleMax: 25}
+	c := defaultConfig()
 	if b, err := os.ReadFile(configPath()); err == nil {
 		_ = json.Unmarshal(b, &c)
+	}
+	c.normalise()
+	return c
+}
+
+func defaultConfig() Config {
+	return Config{Width: 380, Height: 560, Notify: true, NotifyMinutes: 5, FullscreenAlert: true, Sound: true,
+		WeekTab: true, ShowDeclined: true, SyncMinutes: 1, TrayStyle: "both", TrayTitleMax: 25}
+}
+
+// normalise replaces values the UI doesn't offer with defaults. Configs from before the
+// Notify switch turned reminders off with notifyMinutes 0.
+func (c *Config) normalise() {
+	if c.NotifyMinutes <= 0 {
+		c.Notify, c.NotifyMinutes = false, 5
+	}
+	if !slices.Contains(notifyMinuteChoices, c.NotifyMinutes) {
+		c.NotifyMinutes = 5
+	}
+	if !slices.Contains(syncMinuteChoices, c.SyncMinutes) {
+		c.SyncMinutes = 1
+	}
+	if !slices.Contains(themeChoices, c.Theme) {
+		c.Theme = ""
 	}
 	if !validTrayStyle(c.TrayStyle) {
 		c.TrayStyle = "both"
@@ -82,7 +122,53 @@ func loadConfig() Config {
 	if !validTrayTitleMax(c.TrayTitleMax) {
 		c.TrayTitleMax = 25
 	}
-	return c
+}
+
+var (
+	notifyMinuteChoices = []int{1, 5, 10, 15}
+	syncMinuteChoices   = []int{1, 5, 15}
+	themeChoices        = []string{"", "light", "dark"}
+)
+
+// settings are the options Settings shows, by the same names as in config.json.
+func (c Config) settings() map[string]any {
+	return map[string]any{
+		"notify": c.Notify, "notifyMinutes": c.NotifyMinutes, "notifyAtStart": c.NotifyAtStart,
+		"fullscreenAlert": c.FullscreenAlert, "onlyWithLink": c.OnlyWithLink, "sound": c.Sound,
+		"theme": c.Theme, "weekTab": c.WeekTab, "showDeclined": c.ShowDeclined, "syncMinutes": c.SyncMinutes,
+	}
+}
+
+// set changes one of settings() from the page, refusing unknown keys and values the UI doesn't offer.
+func (c *Config) set(key string, value json.RawMessage) error {
+	flags := map[string]*bool{
+		"notify": &c.Notify, "notifyAtStart": &c.NotifyAtStart, "fullscreenAlert": &c.FullscreenAlert,
+		"onlyWithLink": &c.OnlyWithLink, "sound": &c.Sound, "weekTab": &c.WeekTab, "showDeclined": &c.ShowDeclined,
+	}
+	if p, ok := flags[key]; ok {
+		return json.Unmarshal(value, p)
+	}
+	var n int
+	var s string
+	switch key {
+	case "notifyMinutes", "syncMinutes":
+		choices, p := notifyMinuteChoices, &c.NotifyMinutes
+		if key == "syncMinutes" {
+			choices, p = syncMinuteChoices, &c.SyncMinutes
+		}
+		if err := json.Unmarshal(value, &n); err != nil || !slices.Contains(choices, n) {
+			return fmt.Errorf("%s: %s is not one of %v", key, value, choices)
+		}
+		*p = n
+	case "theme":
+		if err := json.Unmarshal(value, &s); err != nil || !slices.Contains(themeChoices, s) {
+			return fmt.Errorf("theme: %s", value)
+		}
+		c.Theme = s
+	default:
+		return fmt.Errorf("unknown setting %q", key)
+	}
+	return nil
 }
 
 func (c Config) save() error {

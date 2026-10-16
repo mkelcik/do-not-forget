@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Settings now work and are saved: reminders on or off, how many minutes before, a second one
+  at the start, sound, the full-screen alert, only meetings with a link, theme, the 7-day tab,
+  showing declined events and how often calendars sync.
+- Start at login (macOS login item, Windows Run key, Linux autostart).
+
 ## [0.8.2] - 2026-10-16
 
 ### Fixed
