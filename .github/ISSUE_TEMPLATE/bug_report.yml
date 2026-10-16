@@ -1,0 +1,48 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Settings
+        2. …
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings → About.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: System
+      options:
+        - macOS
+        - Windows
+        - Linux (KDE Plasma)
+        - Linux (GNOME)
+        - Linux (other)
+    validations:
+      required: true
+  - type: input
+    id: osversion
+    attributes:
+      label: System version
+      placeholder: macOS 15.7, Windows 11 24H2, Ubuntu 24.04 …
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: Run the app from a terminal and paste what it prints. Remove anything private (event titles, emails).
+      render: text

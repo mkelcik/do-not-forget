@@ -14,7 +14,8 @@ in the spirit of [MeetingBar](https://github.com/leits/MeetingBar).
 - **RSVP** (yes / maybe / no) without opening the calendar.
 - **Reminders** before a meeting, and a **maximised alert at the start** for when a notification goes unnoticed.
 - **Mute** reminders for an hour, the rest of the day, or until you turn them back on.
-- **Updates itself** from GitHub Releases, with checksum verification.
+- **Updates itself** from GitHub Releases, verified by checksum and signature.
+- **Translated**: English, Slovak and Czech so far; [add yours](CONTRIBUTING.md#translations).
 
 > Status: early development. Google Calendar works; other providers (Microsoft 365, iCloud,
 > CalDAV) are planned.
@@ -35,7 +36,8 @@ Settings → **+ Add account** → Google signs you in in your browser. The app 
 answer your events (`calendar.events`) and to list your calendars
 (`calendar.calendarlist.readonly`). Tokens are stored only in the system keychain (macOS
 Keychain, Secret Service on Linux, Windows Credential Manager), never in a file;
-**Disconnect** revokes the access at Google and deletes them.
+**Disconnect** revokes the access at Google and deletes them. The app has no servers and no
+telemetry; see the [privacy policy](PRIVACY.md).
 
 ### Your own Google client ID
 
@@ -80,6 +82,12 @@ Releases: tag a commit on `main` (`git tag v0.1.0 && git push origin v0.1.0`); C
 Linux, macOS and Windows archives and publishes them with `SHA256SUMS`.
 
 Built with Go and [Wails v3](https://v3alpha.wails.io/).
+
+## Contributing
+
+Bug reports, translations and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md)
+and the [code of conduct](CODE_OF_CONDUCT.md). Security issues: [SECURITY.md](SECURITY.md).
+Changes are listed in the [changelog](CHANGELOG.md).
 
 ## License
 
