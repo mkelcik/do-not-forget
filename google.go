@@ -624,7 +624,28 @@ func (ge gEvent) event(account string, cal Calendar) (Event, bool) {
 	if e.Link == "" {
 		e.Link = meetingLink(ge.Location + "\n" + e.Description)
 	}
+	// With several Google accounts signed in to the browser, open Meet and Calendar as the
+	// account the event came from, not the browser's default one.
+	if meetingService(e.Link) == "Meet" {
+		e.Link = withAuthUser(e.Link, account)
+	}
+	e.CalendarURL = withAuthUser(e.CalendarURL, account)
 	return e, true
+}
+
+// withAuthUser adds Google's authuser=<email> to a Google URL, keeping one already there.
+func withAuthUser(link, email string) string {
+	u, err := url.Parse(link)
+	if link == "" || email == "" || err != nil {
+		return link
+	}
+	q := u.Query()
+	if q.Has("authuser") {
+		return link
+	}
+	q.Set("authuser", email)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 // IDs carry the account and calendar: the same invitation in two accounts has the same event ID,

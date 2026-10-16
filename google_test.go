@@ -40,7 +40,8 @@ func TestGoogleEventMapping(t *testing.T) {
 	if want := time.Date(2026, 10, 16, 7, 0, 0, 0, time.UTC); !e.Start.Equal(want) || e.End.Sub(e.Start) != 15*time.Minute {
 		t.Errorf("times: %v – %v", e.Start, e.End)
 	}
-	if e.Link != "https://meet.google.com/abc-defg-hij" || e.Response != "maybe" || e.Organizer != "boss@firma.sk" {
+	// Meet and Calendar open as the account the event came from.
+	if e.Link != "https://meet.google.com/abc-defg-hij?authuser=me%40firma.sk" || e.Response != "maybe" || e.Organizer != "boss@firma.sk" {
 		t.Errorf("link/response/organizer: %+v", e)
 	}
 	if len(e.Attendees) != 2 || e.Attendees[1].Name != "Eva" || e.Attendees[1].Status != "yes" {
@@ -58,7 +59,7 @@ func TestGoogleEventMapping(t *testing.T) {
 	if !e.AllDay || !e.Start.Equal(time.Date(2026, 10, 16, 0, 0, 0, 0, time.Local)) || e.Title != "(Bez názvu)" {
 		t.Errorf("all-day: %+v", e)
 	}
-	if e.Link != "https://firma.zoom.us/j/123?pwd=x" || e.Response != "" {
+	if e.Link != "https://firma.zoom.us/j/123?pwd=x" || e.Response != "" { // Zoom left alone
 		t.Errorf("zoom link / no RSVP: %+v", e)
 	}
 
@@ -228,6 +229,18 @@ func TestHTMLToText(t *testing.T) {
 	} {
 		if got := htmlToText(in); got != want {
 			t.Errorf("htmlToText(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestWithAuthUser(t *testing.T) {
+	for _, c := range []struct{ in, want string }{
+		{"https://www.google.com/calendar/event?eid=abc", "https://www.google.com/calendar/event?authuser=me%40x.sk&eid=abc"},
+		{"https://meet.google.com/abc-defg-hij?authuser=1", "https://meet.google.com/abc-defg-hij?authuser=1"}, // kept
+		{"", ""},
+	} {
+		if got := withAuthUser(c.in, "me@x.sk"); got != c.want {
+			t.Errorf("withAuthUser(%q) = %q, want %q", c.in, got, c.want)
 		}
 	}
 }
