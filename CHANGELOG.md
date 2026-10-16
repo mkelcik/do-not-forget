@@ -5,10 +5,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-10-16
+
 ### Added
 
 - Zoom and Teams meetings open in their desktop apps when installed, otherwise in the browser
-  (Settings › General).
+  (Settings › General). Zoom links with a registration token keep opening in the browser.
+
+### Changed
+
+- Updated Go dependencies (godbus/dbus, x/sys and others).
 
 ## [0.8.3] - 2026-10-16
 
@@ -75,7 +81,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.3...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.4...HEAD
+[0.8.4]: https://github.com/mkelcik/do-not-forget/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/mkelcik/do-not-forget/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/mkelcik/do-not-forget/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/mkelcik/do-not-forget/compare/v0.8.0...v0.8.1
