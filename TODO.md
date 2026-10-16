@@ -4,10 +4,11 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Google
 
-- [ ] Google verification: verified domain for the home page and privacy policy, scope
-      justification and demo video for `calendar.events`, then publish the app ("In production";
-      in Testing, tokens expire after 7 days)
-- [ ] `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` as GitHub Actions secrets for release builds
+- [ ] Google verification: home page and privacy policy links in Branding
+      (https://mkelcik.github.io/do-not-forget/), a domain verified in Search Console (a custom
+      domain via `docs/CNAME` if `github.io` isn't accepted), scope justification and demo video
+      for `calendar.events`, then publish the app ("In production"; in Testing, tokens expire
+      after 7 days)
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
 - [ ] RSVP for the whole series, not just one occurrence
 
@@ -24,14 +25,11 @@ What's left, roughly in the order we want to do it within each section.
 - [ ] Open meetings directly in the installed app (`zoommtg://`, `msteams://`), otherwise the
       browser; the link guard in `openURL` must allow those schemes explicitly
 
-## Before going public
+## Releases
 
-- [ ] Make the repository public and turn on GitHub Pages (`main` / `/docs`) and private
-      vulnerability reporting
-- [ ] Test an update end to end: run `v0.0.x`, update to the next release (a private repository
-      returns 404 to the updater, which Wails treats as "up to date")
+- [ ] Test an update end to end: run `v0.8.0`, update to the next release
 - [ ] Try on real Windows and on Linux with Google (tray, notifications, alert, updater, keychain)
-- [ ] Screenshots in the README and on the website (`make showcase`)
+- [ ] Retake the website screenshot (`make showcase`): the current one still wraps 12-hour times
 - [ ] CI: build and test on macOS and Windows, nightly govulncheck
 
 ## Later
