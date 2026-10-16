@@ -1,6 +1,8 @@
 name: Vulnerabilities
 
 # A new advisory can hit code that hasn't changed, so main is checked every night too.
+# govulncheck only sees what builds for the OS it runs on (wincred and go-toast exist only on
+# Windows, the GTK bindings only on Linux), so each desktop platform is checked on its own.
 # A failure here is mailed to the repository owner by GitHub.
 on:
   schedule:
@@ -12,7 +14,11 @@ permissions:
 
 jobs:
   govulncheck:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -20,6 +26,10 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Install GTK4 / WebKitGTK headers (Wails uses cgo on Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
-      - run: make tools
-      - run: make vuln
+      - name: govulncheck
+        shell: bash
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0   # same version as `make tools`
+          "$(go env GOPATH)/bin/govulncheck" ./...
