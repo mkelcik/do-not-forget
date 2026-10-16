@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -20,6 +21,11 @@ func dueNotifications(events []Event, now time.Time, lead, grace time.Duration, 
 		due = append(due, e)
 	}
 	return due
+}
+
+// withLink keeps the events that have a meeting link ("only meetings with a link").
+func withLink(events []Event) []Event {
+	return slices.DeleteFunc(slices.Clone(events), func(e Event) bool { return e.Link == "" })
 }
 
 // sentKey is ID+start, so a rescheduled meeting notifies again.
