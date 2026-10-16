@@ -706,9 +706,12 @@ func main() {
 	})
 	// Start at login is the system's registration (login item, Run key, autostart .desktop), not
 	// a config field, so Settings always shows what will really happen.
+	// Changes run one at a time with the latest wish, so a quick on-off can't end with a slower
+	// Enable finishing after Disable.
+	var autostartChange latestWins[bool]
 	app.Event.On("autostart:set", func(ev *application.CustomEvent) {
 		on, _ := ev.Data.(bool)
-		go func() {
+		autostartChange.set(on, func(on bool) {
 			var err error
 			if on {
 				err = app.Autostart.Enable()
@@ -722,8 +725,8 @@ func main() {
 				autostartError = err.Error()
 			}
 			mu.Unlock()
-			sendLanguage()
-		}()
+			sendLanguage() // shows the registration as the system has it now
+		})
 	})
 	app.Event.On("tray:length", func(ev *application.CustomEvent) {
 		if n, _ := ev.Data.(float64); validTrayTitleMax(int(n)) { // JSON numbers arrive as float64

@@ -4,12 +4,24 @@
 <meta charset="utf-8">
 <title>Do Not Forget</title>
 <style>
-:root { --c: #0a84ff; --ok: #30d158; --warn: #ff9f0a; --no: #ff453a; --muted: #98989f; --line: #ffffff1f; }
+:root { --c: #0a84ff; --ok: #30d158; --warn: #ff9f0a; --no: #ff453a;
+  /* Light; dark below. The theme follows the system unless Settings picks one (data-theme). */
+  --bg: #f5f5f7; --text: #1d1d1f; --text2: #3a3a3c; --muted: #6e6e73; --hint: #8e8e93; --line: #0000001f;
+  --panel: #0000000a; --ghost: #0000000f; --ghost-hover: #0000001a; --hover: #0000000d; --chip: #0000001a; --ring: #f5f5f7;
+  color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) { --bg: #0b0b0f; --text: #f2f2f7; --text2: #d1d1d6; --muted: #98989f; --hint: #636366;
+    --line: #ffffff1f; --panel: #ffffff0d; --ghost: #ffffff1a; --ghost-hover: #ffffff29; --hover: #ffffff14; --chip: #ffffff1f;
+    --ring: #1a1a1f; color-scheme: dark; }
+}
+:root[data-theme=dark] { --bg: #0b0b0f; --text: #f2f2f7; --text2: #d1d1d6; --muted: #98989f; --hint: #636366;
+  --line: #ffffff1f; --panel: #ffffff0d; --ghost: #ffffff1a; --ghost-hover: #ffffff29; --hover: #ffffff14; --chip: #ffffff1f;
+  --ring: #1a1a1f; color-scheme: dark; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font: 15px/1.45 -apple-system, "Segoe UI", system-ui, Cantarell, sans-serif;
-  color: #f2f2f7; height: 100vh; overflow: hidden; user-select: none;
-  background: radial-gradient(ellipse at 30% 30%, color-mix(in srgb, var(--c) 32%, #0b0b0f) 0%, #0b0b0f 70%);
+  color: var(--text); height: 100vh; overflow: hidden; user-select: none;
+  background: radial-gradient(ellipse at 30% 30%, color-mix(in srgb, var(--c) 32%, var(--bg)) 0%, var(--bg) 70%);
   display: grid; place-items: center;
 }
 button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
@@ -20,7 +32,7 @@ main { width: min(1100px, 100% - 64px); max-height: calc(100vh - 80px); display:
 
 .kicker { font-size: 14px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--c); }
 h1 { font-size: clamp(34px, 5vw, 64px); font-weight: 700; line-height: 1.08; margin: 12px 0 18px; }
-.facts { display: grid; gap: 10px; font-size: 17px; color: #d1d1d6; }
+.facts { display: grid; gap: 10px; font-size: 17px; color: var(--text2); }
 .facts div { display: flex; gap: 12px; align-items: baseline; }
 .facts span:first-child { width: 22px; flex: none; text-align: center; opacity: .8; }
 .facts i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
@@ -28,36 +40,36 @@ h1 { font-size: clamp(34px, 5vw, 64px); font-weight: 700; line-height: 1.08; mar
 .join { background: var(--c); color: #fff; font-size: 19px; font-weight: 600; padding: 15px 36px; border-radius: 14px;
   box-shadow: 0 8px 30px color-mix(in srgb, var(--c) 45%, transparent); }
 .join:hover { filter: brightness(1.1); }
-.ghost { background: #ffffff1a; font-size: 17px; padding: 15px 24px; border-radius: 14px; }
-.ghost:hover { background: #ffffff29; }
+.ghost { background: var(--ghost); font-size: 17px; padding: 15px 24px; border-radius: 14px; }
+.ghost:hover { background: var(--ghost-hover); }
 .linktext { margin-top: 12px; font-size: 13px; color: var(--muted); word-break: break-all; }
 
-.panel { background: #ffffff0d; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px;
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px;
   max-height: calc(100vh - 120px); overflow-y: auto; display: grid; gap: 20px; }
 .k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-.desc { white-space: pre-wrap; font-size: 14px; color: #d1d1d6; user-select: text; }
+.desc { white-space: pre-wrap; font-size: 14px; color: var(--text2); user-select: text; }
 .desc button { color: var(--c); text-decoration: underline; padding: 0; }
 .rsvp { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
 .rsvp button { padding: 6px 18px; font-size: 14px; }
 .rsvp button + button { border-left: 1px solid var(--line); }
-.rsvp button:hover { background: #ffffff14; }
+.rsvp button:hover { background: var(--hover); }
 .rsvp .on[data-respond=yes] { background: var(--ok); }
 .rsvp .on[data-respond=maybe] { background: var(--warn); }
 .rsvp .on[data-respond=no] { background: var(--no); }
 .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
 .person { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
 .person b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
-  background: #ffffff1f; flex: none; position: relative; }
+  background: var(--chip); flex: none; position: relative; }
 .person b::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px;
-  border-radius: 50%; border: 2px solid #1a1a1f; background: #636366; }
+  border-radius: 50%; border: 2px solid var(--ring); background: var(--hint); }
 .person.yes b::after { background: var(--ok); }
 .person.maybe b::after { background: var(--warn); }
 .person.no b::after { background: var(--no); }
 .person span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .person small { color: var(--muted); font-size: 11px; }
 .summary { font-size: 12px; color: var(--muted); margin-top: 8px; }
-.more { font-size: 14px; color: #d1d1d6; }
-.hint { position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 12px; color: #636366; }
+.more { font-size: 14px; color: var(--text2); }
+.hint { position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--hint); }
 </style>
 </head>
 <body>
