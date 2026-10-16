@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Zoom and Teams meetings open in their desktop apps when installed, otherwise in the browser
+  (Settings › General).
+
 ## [0.8.3] - 2026-10-16
 
 ### Added

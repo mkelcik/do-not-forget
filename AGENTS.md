@@ -65,7 +65,9 @@ Git), or an own client entered in Settings.
 - A disconnected `googleSource` must never save a token again (`savingTokenSource.close`).
 - Connect and disconnect go through `accountManager` so they can't interleave.
 - Links reach the OS only through the backend (`openURL` / the `open` event), http(s) only.
-  The frontend never calls Wails' `Browser.OpenURL` directly.
+  The frontend never calls Wails' `Browser.OpenURL` directly. The one exception is built in Go:
+  `nativeMeetingURL` turns a Zoom or Teams link `meetingService` accepted into `zoommtg:` /
+  `msteams:`, opened only when `hasURLHandler` finds an installed app for it.
 - Meeting services (Meet, Zoom, Teams) are recognised by exact host in `meetingService`,
   never by a substring of the URL.
 - Values inserted into HTML are escaped with `esc()`; translations are inserted as is.

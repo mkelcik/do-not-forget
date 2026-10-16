@@ -24,6 +24,8 @@ type Config struct {
 	OnlyWithLink bool `json:"onlyWithLink"`
 	// Sound plays the system sound with notifications.
 	Sound bool `json:"sound"`
+	// NativeApps opens Zoom and Teams meetings in their desktop apps when installed.
+	NativeApps bool `json:"nativeApps"`
 	// Theme is "", "light" or "dark"; "" follows the system.
 	Theme string `json:"theme"`
 	// WeekTab shows the 7-day tab; ShowDeclined lists declined events (struck through).
@@ -97,7 +99,7 @@ func loadConfig() Config {
 }
 
 func defaultConfig() Config {
-	return Config{Width: 380, Height: 560, Notify: true, NotifyMinutes: 5, FullscreenAlert: true, Sound: true,
+	return Config{Width: 380, Height: 560, Notify: true, NotifyMinutes: 5, FullscreenAlert: true, Sound: true, NativeApps: true,
 		WeekTab: true, ShowDeclined: true, SyncMinutes: 1, TrayStyle: "both", TrayTitleMax: 25}
 }
 
@@ -134,7 +136,7 @@ var (
 func (c Config) settings() map[string]any {
 	return map[string]any{
 		"notify": c.Notify, "notifyMinutes": c.NotifyMinutes, "notifyAtStart": c.NotifyAtStart,
-		"fullscreenAlert": c.FullscreenAlert, "onlyWithLink": c.OnlyWithLink, "sound": c.Sound,
+		"fullscreenAlert": c.FullscreenAlert, "onlyWithLink": c.OnlyWithLink, "sound": c.Sound, "nativeApps": c.NativeApps,
 		"theme": c.Theme, "weekTab": c.WeekTab, "showDeclined": c.ShowDeclined, "syncMinutes": c.SyncMinutes,
 	}
 }
@@ -144,6 +146,7 @@ func (c *Config) set(key string, value json.RawMessage) error {
 	flags := map[string]*bool{
 		"notify": &c.Notify, "notifyAtStart": &c.NotifyAtStart, "fullscreenAlert": &c.FullscreenAlert,
 		"onlyWithLink": &c.OnlyWithLink, "sound": &c.Sound, "weekTab": &c.WeekTab, "showDeclined": &c.ShowDeclined,
+		"nativeApps": &c.NativeApps,
 	}
 	if p, ok := flags[key]; ok {
 		return json.Unmarshal(value, p)

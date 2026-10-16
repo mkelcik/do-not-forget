@@ -114,6 +114,8 @@
   "settings.tray_length_chars_few": "{{count}} znaky",
   "settings.tray_length_chars_other": "{{count}} znakov",
   "settings.general": "Všeobecné",
+  "settings.native_apps": "Otvárať Zoom a Teams v appke",
+  "settings.native_apps_desc": "Ak je nainštalovaná, inak v prehliadači",
   "settings.autostart": "Spustiť po prihlásení",
   "settings.sync_every": "Synchronizovať každých",
   "settings.version": "verzia {{version}}",

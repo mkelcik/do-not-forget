@@ -15,11 +15,6 @@ What's left, roughly in the order we want to do it within each section.
 
 - [ ] A dark tray icon variant for light panels on Linux and Windows (`icon.go`)
 
-## Meeting apps
-
-- [ ] Open meetings directly in the installed app (`zoommtg://`, `msteams://`), otherwise the
-      browser; the link guard in `openURL` must allow those schemes explicitly
-
 ## Releases
 
 - [ ] Try on real Windows and on Linux with Google (tray, notifications, alert, updater, keychain)

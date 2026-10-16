@@ -14,7 +14,8 @@ Website: <https://mkelcik.github.io/do-not-forget/>
 - **Next meeting in the tray**: hover for title, calendar and countdown; click for the agenda.
 - **Google Calendar**, several accounts at once: today, tomorrow and the next 7 days merged into one list,
   with overlapping meetings grouped as conflicts. Pick which calendars to show.
-- **Join with one click**: Google Meet, Zoom and Teams links are detected.
+- **Join with one click**: Google Meet, Zoom and Teams links are detected; Zoom and Teams open in
+  their apps when installed.
 - **RSVP** (yes / maybe / no) without opening the calendar.
 - **Reminders** before a meeting, and a **maximised alert at the start** for when a notification goes unnoticed.
 - **Mute** reminders for an hour, the rest of the day, or until you turn them back on.
