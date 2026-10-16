@@ -22,6 +22,31 @@ case "$GOOS" in
 linux)
 	go build -trimpath -tags production -ldflags "$LDFLAGS" -o "build/$NAME" .
 	tar -czf "dist/$ASSET.tar.gz" -C build "$NAME"
+	# Debian packages use version/arch names, without "linux", so the updater still picks the archive.
+	deb_version="${VERSION/-/\~}" # Debian sorts prereleases before the final version.
+	if [ "$VERSION" = dev ]; then deb_version="0~dev"; fi
+	stage="build/debian/$NAME"
+	mkdir -p "$stage/DEBIAN" build/debian
+	install -Dm755 "build/$NAME" "$stage/usr/bin/$NAME"
+	install -Dm644 packaging/linux/do-not-forget.desktop "$stage/usr/share/applications/$NAME.desktop"
+	install -Dm644 docs/logo.svg "$stage/usr/share/icons/hicolor/scalable/apps/$NAME.svg"
+	install -Dm644 LICENSE "$stage/usr/share/doc/$NAME/copyright"
+	# Derive library versions from the actual binary instead of guessing compatible GTK/glibc versions.
+	printf 'Source: %s\n\nPackage: %s\nArchitecture: any\nDescription: Meeting reminders in the system tray\n' "$NAME" "$NAME" > build/debian/control
+	cat >"$stage/DEBIAN/control" <<CONTROL
+Package: $NAME
+Version: $deb_version
+Architecture: $GOARCH
+Maintainer: Michal Kelčík <mkelcik@gmail.com>
+Section: utils
+Priority: optional
+Homepage: https://mkelcik.github.io/do-not-forget/
+Description: Meeting reminders in the system tray
+ Shows upcoming calendar events, reminders and one-click meeting links.
+CONTROL
+	depends="$(cd build && dpkg-shlibdeps -O -e "debian/$NAME/usr/bin/$NAME")"
+	printf 'Depends: %s, xdg-utils\n' "${depends#shlibs:Depends=}" >> "$stage/DEBIAN/control"
+	dpkg-deb --build --root-owner-group "$stage" "dist/${NAME}_${deb_version}_${GOARCH}.deb"
 	;;
 darwin)
 	app="build/$NAME.app"

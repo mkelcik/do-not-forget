@@ -25,7 +25,7 @@ help:
 		"  tidy-check  Fail if go mod tidy would change go.mod/go.sum" \
 		"  tools       Install pinned golangci-lint and govulncheck (re-run after a Go upgrade)" \
 		"  ci          Everything CI runs" \
-		"  dist        Release archive for this OS/arch into dist/"
+		"  dist        Release archive (and .deb on Linux) for this OS/arch into dist/"
 
 DEVAPP := build/do-not-forget-dev.app
 # Arguments for run; `make run RUNARGS=` runs against the connected accounts only.
