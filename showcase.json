@@ -1,0 +1,45 @@
+{
+  "calendars": {
+    "Work": "#0a84ff",
+    "Product team": "#bf5af2",
+    "Personal": "#30d158"
+  },
+  "events": [
+    { "calendar": "Personal", "title": "Mia's birthday 🎂", "allDay": true },
+    { "calendar": "Work", "title": "Company all-hands week", "allDay": true },
+
+    { "calendar": "Product team", "title": "Daily standup", "at": "-3h", "dur": "15m", "response": "yes",
+      "link": "https://meet.google.com/dai-lyst-ndp",
+      "attendees": [{ "name": "Sam Taylor", "status": "yes", "self": true }, { "name": "Priya Shah", "status": "yes" }, { "name": "Leo Martin", "status": "yes" }] },
+    { "calendar": "Work", "title": "Code review: checkout flow", "at": "-75m", "dur": "45m", "response": "yes",
+      "link": "https://meet.google.com/cod-erev-iew",
+      "attendees": [{ "name": "Sam Taylor", "status": "yes", "self": true }, { "name": "Leo Martin", "status": "yes" }] },
+
+    { "calendar": "Work", "title": "Design review: new onboarding", "at": "+8m", "dur": "45m", "response": "yes",
+      "link": "https://meet.google.com/des-ignr-evw", "location": "Room Orion · 3rd floor", "organizer": "Priya Shah",
+      "description": "Walkthrough of the new onboarding screens before they go to usability testing.\n\nAgenda\n1. Sign-up and first calendar\n2. Empty states\n3. Open questions\n\nFigma: https://www.figma.com/file/onboarding\nNotes: https://docs.example.com/design-review",
+      "attendees": [{ "name": "Sam Taylor", "status": "yes", "self": true }, { "name": "Priya Shah", "status": "yes" }, { "name": "Leo Martin", "status": "yes" },
+                    { "name": "Emma Novak", "status": "maybe" }, { "name": "Daniel Kim", "status": "no" }, { "name": "Olivia Brown", "status": "pending" }] },
+    { "calendar": "Product team", "title": "1:1 with Priya", "at": "+90m", "dur": "30m", "response": "pending",
+      "link": "https://zoom.us/j/4815162342", "organizer": "Priya Shah",
+      "attendees": [{ "name": "Sam Taylor", "status": "pending", "self": true }, { "name": "Priya Shah", "status": "yes" }] },
+    { "calendar": "Work", "title": "Quarterly planning", "at": "+150m", "dur": "1h", "response": "maybe",
+      "link": "https://teams.microsoft.com/l/meetup-join/quarterly-planning", "organizer": "Daniel Kim",
+      "attendees": [{ "name": "Sam Taylor", "status": "maybe", "self": true }, { "name": "Daniel Kim", "status": "yes" }, { "name": "Emma Novak", "status": "yes" }] },
+    { "calendar": "Personal", "title": "Pick up the bike from service", "at": "+165m", "dur": "30m", "location": "Wheel & Spoke, Main Street 12" },
+    { "calendar": "Work", "title": "Vendor webinar", "at": "+4h", "dur": "45m", "response": "no",
+      "link": "https://zoom.us/j/2718281828", "attendees": [{ "name": "Sam Taylor", "status": "no", "self": true }, { "name": "Vendor Inc.", "status": "yes" }] },
+    { "calendar": "Personal", "title": "Running club", "at": "+6h", "dur": "1h", "location": "City park" },
+
+    { "calendar": "Product team", "title": "Sprint retro", "day": 1, "at": "10:00", "dur": "1h", "response": "yes",
+      "link": "https://meet.google.com/spr-intr-tro" },
+    { "calendar": "Work", "title": "Customer demo", "day": 1, "at": "14:00", "dur": "1h", "response": "pending",
+      "link": "https://teams.microsoft.com/l/meetup-join/customer-demo", "organizer": "Emma Novak" },
+    { "calendar": "Personal", "title": "Dinner with Alex", "day": 1, "at": "19:30", "dur": "1h30m", "location": "Trattoria Roma" },
+    { "calendar": "Work", "title": "Architecture review", "day": 2, "at": "11:00", "dur": "1h30m", "response": "pending",
+      "link": "https://meet.google.com/arc-hrev-iew", "organizer": "Leo Martin" },
+    { "calendar": "Product team", "title": "Sprint planning", "day": 3, "at": "09:30", "dur": "2h", "response": "yes",
+      "link": "https://meet.google.com/spr-intp-lan" },
+    { "calendar": "Personal", "title": "Weekend hike", "day": 5, "allDay": true }
+  ]
+}

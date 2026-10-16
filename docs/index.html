@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do Not Forget</title>
+<meta name="description" content="A tray app for Linux, macOS and Windows that keeps your next meeting one glance away.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="./"><img class="logo" src="logo.svg" alt="">Do Not Forget</a>
+  <nav><a href="privacy.html">Privacy</a><a href="https://github.com/mkelcik/do-not-forget">GitHub</a></nav>
+</header>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Your next meeting, one glance away</h1>
+      <p class="lead">Do Not Forget is a free, open-source tray and menu bar app for Linux, macOS and
+        Windows. It shows your next meeting, reminds you before it starts and lets you join or answer
+        the invitation in one click.</p>
+      <p><a class="button" href="https://github.com/mkelcik/do-not-forget/releases/latest">Download</a></p>
+      <figure class="menubar">
+        <img src="menubar.png" width="262" height="31" alt="The macOS menu bar showing “Design review… · in 6 min”">
+        <figcaption>The next meeting and its countdown, always in the menu bar.</figcaption>
+      </figure>
+    </div>
+    <img class="shot" src="screenshot.png" width="601" height="993"
+      alt="The agenda: the next meeting with a Join via Meet button, all-day events, today's meetings with Meet, Zoom and Teams links, an unanswered invitation, a scheduling conflict and a declined event">
+  </section>
+
+  <h2>What it does</h2>
+  <ul class="features">
+    <li><b>Next meeting in the tray</b><span>Title and countdown in the menu bar; click for the day's agenda.</span></li>
+    <li><b>Google Calendar</b><span>Several accounts at once, merged into one list, with the calendars you choose.</span></li>
+    <li><b>Join in one click</b><span>Google Meet, Zoom and Teams links are found in your events.</span></li>
+    <li><b>RSVP</b><span>Answer yes, maybe or no without opening your calendar.</span></li>
+    <li><b>Reminders</b><span>A notification before each meeting and a full-screen alert when it starts.</span></li>
+    <li><b>Mute</b><span>Silence reminders for an hour, for the day, or until you turn them back on.</span></li>
+  </ul>
+
+  <h2>How it uses your Google data</h2>
+  <p>When you connect a Google account, Do Not Forget asks to see and respond to your calendar
+    events (<code>calendar.events</code>) and to see the list of your calendars
+    (<code>calendar.calendarlist.readonly</code>). It uses them only to show your upcoming
+    meetings, remind you of them and send the RSVPs you choose.</p>
+  <p>The app runs entirely on your computer and talks to Google directly. It has no servers and
+    no analytics; your calendar data is never sent to the developers or anyone else. Sign-in
+    tokens are kept only in your system's keychain, and disconnecting an account revokes its
+    access. Details are in the <a href="privacy.html">privacy policy</a>.</p>
+
+  <h2>Open source</h2>
+  <p>The source code is on <a href="https://github.com/mkelcik/do-not-forget">GitHub</a> under
+    the MIT License. Bug reports, translations and contributions are welcome.</p>
+</main>
+<footer>
+  <span>© 2026 mkelcik</span>
+  <a href="privacy.html">Privacy policy</a>
+  <a href="https://github.com/mkelcik/do-not-forget/issues">Contact</a>
+</footer>
+</body>
+</html>

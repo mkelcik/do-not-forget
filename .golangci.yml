@@ -1,0 +1,66 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - errorlint      # errors.Is/As instead of == and type asserts
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocritic
+    - revive
+    - misspell
+    - unconvert
+    - unparam
+    - prealloc
+    - bodyclose
+    - noctx
+    - nilerr
+    - errname
+    - exhaustive
+    - gosec
+    - copyloopvar
+    - intrange
+    - perfsprint
+    - thelper
+    - usestdlibvars
+    - wastedassign
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - os.Remove
+    revive:
+      rules:
+        - name: var-naming
+        - name: receiver-naming
+        - name: error-strings
+        - name: error-naming
+        - name: unexported-return
+        - name: context-as-argument
+    gocritic:
+      enabled-tags: [diagnostic, performance]
+      disabled-checks:
+        - hugeParam     # Event is passed by value on purpose; lists are tens of items
+        - rangeValCopy  # same
+    gosec:
+      excludes:
+        - G304 # reading the dummy file and config named by flag/user dir is the point
+    exhaustive:
+      default-signifies-exhaustive: true
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [gosec, errcheck]
+
+formatters:
+  enable: [gofmt, goimports]
+  settings:
+    goimports:
+      local-prefixes: [github.com/mkelcik/do-not-forget]

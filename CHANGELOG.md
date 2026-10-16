@@ -1,0 +1,37 @@
+# Changelog
+
+Notable changes, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/);
+versions follow [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+## [0.8.0] - 2026-10-16
+
+First public release.
+
+### Added
+
+- Tray / menu bar app for Linux, macOS and Windows: the next meeting with a countdown, and an
+  agenda for today, tomorrow and the next 7 days with overlapping meetings grouped as conflicts.
+- Google Calendar: several accounts at once, browser sign-in with PKCE, tokens only in the
+  system keychain, calendar selection with Google's colours, and RSVP (yes / maybe / no).
+- Join with one click: Meet, Zoom and Teams links from the conference data, the location or the
+  description. Meet and "open in calendar" open as the account the event came from.
+- An own Google OAuth client ID in Settings, for builds without the built-in one or
+  organisations that only allow their own apps.
+- Reminders before a meeting, a maximised alert when it starts, and mute for an hour, the rest
+  of the day or until turned back on.
+- macOS: the menu bar shows an icon, icon and text, or text only; the title is shortened to a
+  chosen length while the countdown always shows.
+- Event details: attendees, organizer, descriptions with line breaks and clickable links that
+  fold when long.
+- English, Slovak and Czech, chosen automatically or in Settings.
+- In-app updates from GitHub Releases, verified by checksum and Ed25519 signature.
+
+### Security
+
+- Disconnecting an account revokes its access at Google and deletes its tokens.
+- Links from event data open only as http(s), and meeting services are recognised by exact host.
+
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/mkelcik/do-not-forget/releases/tag/v0.8.0

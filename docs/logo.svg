@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" role="img" aria-label="Do Not Forget">
+  <rect width="22" height="22" rx="5" fill="#1c1c1e"/>
+  <g fill="#fcfcfc">
+    <rect x="6" y="2" width="2" height="2"/><rect x="14" y="2" width="2" height="2"/>
+    <rect x="3" y="4" width="16" height="3"/>
+    <rect x="3" y="7" width="1" height="12"/><rect x="18" y="7" width="1" height="12"/><rect x="3" y="18" width="16" height="1"/>
+    <rect x="6" y="9" width="2" height="2"/><rect x="10" y="9" width="2" height="2"/><rect x="14" y="9" width="2" height="2"/>
+    <rect x="6" y="13" width="2" height="2"/><rect x="14" y="13" width="2" height="2"/>
+  </g>
+  <rect x="10" y="13" width="2" height="2" fill="#3daee9"/>
+</svg>

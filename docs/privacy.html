@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy · Do Not Forget</title>
+<meta name="description" content="What Do Not Forget accesses, what it stores and where your data goes.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="./"><img class="logo" src="logo.svg" alt="">Do Not Forget</a>
+  <nav><a href="privacy.html">Privacy</a><a href="https://github.com/mkelcik/do-not-forget">GitHub</a></nav>
+</header>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: 16 October 2026</p>
+
+  <p>Do Not Forget is a desktop app that runs on your computer. It has no servers of its own and
+    collects no analytics or telemetry. This policy explains what the app accesses and where that
+    data goes.</p>
+
+  <h2>Google Calendar</h2>
+  <p>When you connect a Google account, the app asks Google for two permissions:</p>
+  <ul>
+    <li><b><code>calendar.events</code></b>: see your events and change your own response
+      (yes / maybe / no) when you RSVP in the app.</li>
+    <li><b><code>calendar.calendarlist.readonly</code></b>: see the names and colours of your
+      calendars, so you can choose which ones to show.</li>
+  </ul>
+  <p>The app uses this access only to show your upcoming events, remind you of them and send
+    RSVPs you choose to make. It talks to Google's APIs directly from your computer. Event data is
+    kept in memory while the app runs and is never written to disk, sent to the developers or
+    shared with anyone else.</p>
+  <p>The app's use and transfer of information received from Google APIs adheres to the
+    <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API
+    Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h2>What is stored on your computer</h2>
+  <ul>
+    <li><b>Access tokens</b> for connected accounts, and the client secret if you enter your own
+      Google client ID: only in your system's keychain (macOS Keychain, Secret Service on Linux,
+      Windows Credential Manager).</li>
+    <li><b>Settings</b> (<code>config.json</code> in your user configuration folder): window size,
+      reminder and display preferences, language, the email addresses of connected accounts, which
+      calendars are hidden, and your own Google client ID if you set one. No tokens or event
+      data.</li>
+  </ul>
+
+  <h2>Network connections</h2>
+  <ul>
+    <li><b>Google</b> (<code>accounts.google.com</code>, <code>oauth2.googleapis.com</code>,
+      <code>www.googleapis.com</code>): sign-in, token refresh and revocation, and calendar
+      data.</li>
+    <li><b>GitHub</b> (<code>api.github.com</code>, <code>github.com</code>): release builds check
+      for updates every few hours and download new versions from this project's GitHub Releases.
+      GitHub sees your IP address, as with any web request; the app sends no information about you
+      or your calendars.</li>
+  </ul>
+  <p>Links you click (meeting links, "open in calendar") open in your web browser.</p>
+
+  <h2>Removing your data</h2>
+  <ul>
+    <li><b>Disconnect</b> an account in Settings: the app revokes its access at Google and deletes
+      its tokens from the keychain.</li>
+    <li>You can also revoke access at any time in your
+      <a href="https://myaccount.google.com/permissions">Google Account permissions</a>.</li>
+    <li>Uninstalling the app and deleting its configuration folder removes everything else.</li>
+  </ul>
+
+  <h2>Changes and contact</h2>
+  <p>Changes to this policy are published on this page; its history is in the project's
+    <a href="https://github.com/mkelcik/do-not-forget/commits/main/docs/privacy.html">repository</a>.
+    Questions: open an issue at
+    <a href="https://github.com/mkelcik/do-not-forget/issues">github.com/mkelcik/do-not-forget/issues</a>.</p>
+</main>
+<footer>
+  <span>© 2026 mkelcik</span>
+  <a href="./">Home</a>
+  <a href="https://github.com/mkelcik/do-not-forget/issues">Contact</a>
+</footer>
+</body>
+</html>

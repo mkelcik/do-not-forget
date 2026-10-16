@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<title>Do Not Forget</title>
+<style>
+:root { --c: #0a84ff; --ok: #30d158; --warn: #ff9f0a; --no: #ff453a; --muted: #98989f; --line: #ffffff1f; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font: 15px/1.45 -apple-system, "Segoe UI", system-ui, Cantarell, sans-serif;
+  color: #f2f2f7; height: 100vh; overflow: hidden; user-select: none;
+  background: radial-gradient(ellipse at 30% 30%, color-mix(in srgb, var(--c) 32%, #0b0b0f) 0%, #0b0b0f 70%);
+  display: grid; place-items: center;
+}
+button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
+main { width: min(1100px, 100% - 64px); max-height: calc(100vh - 80px); display: grid;
+  grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: start; animation: in .35s ease-out; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; gap: 28px; overflow-y: auto; } }
+@keyframes in { from { opacity: 0; transform: scale(.98); } }
+
+.kicker { font-size: 14px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--c); }
+h1 { font-size: clamp(34px, 5vw, 64px); font-weight: 700; line-height: 1.08; margin: 12px 0 18px; }
+.facts { display: grid; gap: 10px; font-size: 17px; color: #d1d1d6; }
+.facts div { display: flex; gap: 12px; align-items: baseline; }
+.facts span:first-child { width: 22px; flex: none; text-align: center; opacity: .8; }
+.facts i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.join { background: var(--c); color: #fff; font-size: 19px; font-weight: 600; padding: 15px 36px; border-radius: 14px;
+  box-shadow: 0 8px 30px color-mix(in srgb, var(--c) 45%, transparent); }
+.join:hover { filter: brightness(1.1); }
+.ghost { background: #ffffff1a; font-size: 17px; padding: 15px 24px; border-radius: 14px; }
+.ghost:hover { background: #ffffff29; }
+.linktext { margin-top: 12px; font-size: 13px; color: var(--muted); word-break: break-all; }
+
+.panel { background: #ffffff0d; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px;
+  max-height: calc(100vh - 120px); overflow-y: auto; display: grid; gap: 20px; }
+.k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.desc { white-space: pre-wrap; font-size: 14px; color: #d1d1d6; user-select: text; }
+.desc button { color: var(--c); text-decoration: underline; padding: 0; }
+.rsvp { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.rsvp button { padding: 6px 18px; font-size: 14px; }
+.rsvp button + button { border-left: 1px solid var(--line); }
+.rsvp button:hover { background: #ffffff14; }
+.rsvp .on[data-respond=yes] { background: var(--ok); }
+.rsvp .on[data-respond=maybe] { background: var(--warn); }
+.rsvp .on[data-respond=no] { background: var(--no); }
+.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+.person { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
+.person b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
+  background: #ffffff1f; flex: none; position: relative; }
+.person b::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px;
+  border-radius: 50%; border: 2px solid #1a1a1f; background: #636366; }
+.person.yes b::after { background: var(--ok); }
+.person.maybe b::after { background: var(--warn); }
+.person.no b::after { background: var(--no); }
+.person span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.person small { color: var(--muted); font-size: 11px; }
+.summary { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.more { font-size: 14px; color: #d1d1d6; }
+.hint { position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 12px; color: #636366; }
+</style>
+</head>
+<body>
+<main id="main"></main>
+<div class="hint" data-i18n="alert.esc_hint"></div>
+
+<script type="module">
+import { Events, Window } from "/wails/runtime.js";
+import { t, onLanguage, hm, dur, esc, joinLabel, openURL, linkify } from "/i18n.js";
+
+let events = [];
+const when = (d) => { const m = Math.round((Date.now() - d) / 60000); return m <= 0 ? t("alert.starting") : t("alert.started", { m }); };
+// Escape first, then turn URLs into clickable buttons that open in the browser.
+const statuses = ["yes", "maybe", "no", "pending"];
+
+function render() {
+  const e = events[0];
+  if (!e) return;
+  document.documentElement.style.setProperty("--c", e.color || "#0a84ff");
+  const people = e.attendees || [];
+  const counts = statuses.map((k) => [t("status." + k), people.filter((p) => p.status === k).length])
+    .filter(([, n]) => n).map(([l, n]) => `${n} ${l}`).join(" · ");
+  const others = events.slice(1).map((o) => esc(o.title)).join(", ");
+
+  const panel = [
+    e.response && `<div><div class="k">${t("rsvp.question")}</div><div class="rsvp">${["yes", "maybe", "no"]
+      .map((r) => `<button data-respond="${r}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div></div>`,
+    e.description && `<div><div class="k">${t("detail.description")}</div><div class="desc">${linkify(e.description)}</div></div>`,
+    people.length && `<div><div class="k">${t("detail.attendees")} · ${people.length}</div><div class="people">${people.map((p) =>
+      `<div class="person ${esc(p.status)}" title="${statuses.includes(p.status) ? t("status." + p.status) : ""}"><b>${esc((p.name || "?").charAt(0).toUpperCase())}</b>
+        <span>${esc(p.name || "")}${p.name && p.name === e.organizer ? ` <small>${t("alert.organizer")}</small>` : ""}${p.self ? ` <small>${t("alert.you")}</small>` : ""}</span></div>`).join("")}
+      </div><div class="summary">${counts}</div></div>`,
+    others && `<div><div class="k">${t("alert.also_starting")}</div><div class="more">${others}</div></div>`,
+  ].filter(Boolean).join("");
+
+  document.getElementById("main").innerHTML = `
+    <section>
+      <div class="kicker">${when(e.start)}</div>
+      <h1>${esc(e.title)}</h1>
+      <div class="facts">
+        <div><span>🕒</span><span>${hm(e.start)} – ${hm(e.end)} · ${dur(e)}</span></div>
+        ${e.location ? `<div><span>📍</span><span>${esc(e.location)}</span></div>` : ""}
+        <div><span><i></i></span><span>${esc(e.calendar)}</span></div>
+        ${e.organizer ? `<div><span>👤</span><span>${t("alert.organized_by", { name: esc(e.organizer) })}</span></div>` : ""}
+      </div>
+      <div class="actions">
+        ${e.link ? `<button class="join" data-url="${esc(e.link)}" data-close>${joinLabel(e)}</button>` : ""}
+        ${e.calendarUrl ? `<button class="ghost" data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : ""}
+        <button class="ghost" data-close>${t("alert.close")}</button>
+      </div>
+      ${e.link ? `<div class="linktext">${esc(e.link)}</div>` : ""}
+    </section>
+    ${panel ? `<aside class="panel">${panel}</aside>` : ""}`;
+}
+
+Events.On("alert", ({ data }) => {
+  events = (data ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  render();
+});
+document.addEventListener("click", (ev) => {
+  const t = ev.target;
+  const ans = t.closest("[data-respond]");
+  if (ans && events[0]) {
+    events[0].response = ans.dataset.respond;
+    Events.Emit("respond", { id: events[0].id, response: ans.dataset.respond });
+    return render();
+  }
+  const link = t.closest("[data-url]");
+  if (link) openURL(link.dataset.url);
+  if (t.closest("[data-close]")) Window.Hide();
+});
+onLanguage(render);
+setInterval(render, 30000);
+</script>
+</body>
+</html>

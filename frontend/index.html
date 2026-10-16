@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<title>Do Not Forget</title>
+<style>
+:root {
+  --bg: #f7f7f8; --card: #fff; --text: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea;
+  --accent: #0a84ff; --danger: #ff453a; --warn: #ff9f0a;
+  --work: #0a84ff; --personal: #30d158;
+  color-scheme: light dark; /* native popups (select list, scrollbars) follow the theme */
+}
+:root[data-theme=light] { color-scheme: light; }
+:root[data-theme=dark] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) { --bg: #1c1c1e; --card: #2c2c2e; --text: #f2f2f7; --muted: #98989f; --line: #3a3a3c; }
+}
+:root[data-theme=dark] { --bg: #1c1c1e; --card: #2c2c2e; --text: #f2f2f7; --muted: #98989f; --line: #3a3a3c; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font: 13px/1.4 -apple-system, "Segoe UI", system-ui, Cantarell, sans-serif;
+  background: var(--bg); color: var(--text); height: 100vh;
+  display: flex; flex-direction: column; overflow: hidden; user-select: none;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+
+header { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: center; }
+header h1 { font-size: 15px; font-weight: 600; }
+header small { color: var(--muted); display: block; font-size: 12px; }
+.chips { display: flex; gap: 6px; }
+.chip { display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 99px;
+  background: var(--card); border: 1px solid var(--line); font-size: 11px; }
+.chip.off { opacity: .4; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+.hero { margin: 0 12px 10px; padding: 14px; border-radius: 12px; background: var(--card);
+  border-left: 4px solid var(--c); box-shadow: 0 1px 3px #0000001a; }
+.hero .when { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--c); }
+.hero .title { font-size: 16px; font-weight: 600; margin: 3px 0 2px; }
+.hero .meta { color: var(--muted); font-size: 12px; }
+.hero .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.progress { height: 3px; border-radius: 2px; background: var(--line); margin-top: 10px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--c); }
+.join { background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 8px; font-weight: 600; }
+
+.tabs { display: flex; margin: 0 12px; background: var(--line); border-radius: 8px; padding: 2px; }
+.tabs button { flex: 1; padding: 4px; border-radius: 6px; font-size: 12px; color: var(--muted); }
+.tabs button[hidden] { display: none; }
+.day-head { position: sticky; top: -8px; z-index: 1; background: var(--bg); padding: 10px 4px 4px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.day-head:first-child { padding-top: 2px; }
+.tabs button.on { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px #0000001a; }
+
+main { flex: 1; overflow-y: auto; padding: 8px 12px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 0; }
+.ev { display: flex; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; position: relative; }
+.ev:hover { background: var(--card); }
+.ev.past { opacity: .45; }
+/* min-width, not width: 12-hour times ("10:14 AM") need more room and mustn't wrap */
+.ev .time { min-width: 42px; flex: none; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ev .time small { display: block; color: var(--muted); font-size: 11px; }
+.ev .bar { width: 3px; border-radius: 2px; background: var(--c); flex: none; }
+.ev .body { flex: 1; min-width: 0; }
+.ev .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev .sub { color: var(--muted); font-size: 12px; }
+/* RSVP: pending = dashed bar, maybe = hollow bar, declined = struck through */
+.ev.rsvp-pending .bar { background: repeating-linear-gradient(var(--c) 0 3px, transparent 3px 6px); }
+.ev.rsvp-maybe .bar { background: none; border: 1px solid var(--c); width: 3px; }
+.ev.rsvp-no { opacity: .45; }
+.ev.rsvp-no .name { text-decoration: line-through; }
+.tag { font-size: 10px; font-weight: 600; padding: 0 5px; border-radius: 4px; margin-left: 4px; }
+.tag.pending { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.tag.maybe { color: var(--muted); background: var(--line); }
+.rsvp { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; width: fit-content; }
+.rsvp button { padding: 3px 12px; font-size: 12px; border-right: 1px solid var(--line); }
+.rsvp button:last-child { border-right: 0; }
+.rsvp button:hover { background: var(--line); }
+.rsvp button.on[data-respond=yes] { background: var(--personal); color: #fff; }
+.rsvp button.on[data-respond=maybe] { background: var(--warn); color: #fff; }
+.rsvp button.on[data-respond=no] { background: var(--danger); color: #fff; }
+.hero .ask { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--warn); font-weight: 600; }
+.person.maybe b { background: var(--warn); color: #fff; }
+.conflict { margin: 4px 0; padding: 2px 0 2px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.conflict.past { opacity: .45; }
+.conflict .ev.past { opacity: 1; }
+.conflict-head { padding: 4px 10px 0; font-size: 10px; font-weight: 600; letter-spacing: .03em;
+  text-transform: uppercase; color: var(--danger); }
+.ev .cam { align-self: center; color: var(--accent); font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+.ev .cam:hover { background: var(--line); }
+.now { display: flex; align-items: center; gap: 6px; color: var(--danger); font-size: 10px; font-weight: 600; margin: 2px 0; }
+.now::after { content: ""; flex: 1; height: 1px; background: var(--danger); }
+.allday { padding: 5px 10px; margin-bottom: 6px; border-radius: 6px; font-size: 12px;
+  background: color-mix(in srgb, var(--c) 18%, transparent); display: flex; gap: 8px; align-items: baseline; }
+.allday .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.allday .cal-name { color: var(--muted); font-size: 11px; flex: none; max-width: 45%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Expanded event: row + detail in one card, full width */
+.open-card { margin: 4px 0; border-radius: 10px; background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); box-shadow: 0 2px 8px #00000026; }
+.open-card .ev:hover { background: none; }
+.detail { padding: 2px 12px 12px; font-size: 12px; display: grid; gap: 8px;
+  border-top: 1px solid var(--line); margin: 0 8px; padding-top: 10px; }
+.detail .k { color: var(--muted); font-size: 11px; }
+.desc { white-space: pre-line; overflow-wrap: anywhere; user-select: text; }
+.desc button { color: var(--accent); text-decoration: underline; padding: 0; text-align: left; }
+.desc.folded { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.detail .more { padding: 2px 0; margin-top: 2px; }
+.people { display: flex; flex-wrap: wrap; gap: 4px; }
+.person { padding: 2px 6px 2px 2px; border-radius: 99px; background: var(--bg); display: flex; gap: 4px; align-items: center; }
+.person b { width: 18px; height: 18px; border-radius: 50%; background: var(--line); font-size: 9px;
+  display: grid; place-items: center; }
+.person.yes b { background: var(--personal); color: #fff; }
+.person.no b { background: var(--danger); color: #fff; }
+.actions { display: flex; gap: 6px; }
+.actions button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); }
+.actions .join { border: 0; }
+
+/* Settings view replaces the agenda inside the same popup */
+#settings { display: none; flex: 1; flex-direction: column; min-height: 0; }
+body.settings-open > :not(#settings) { display: none; }
+body.settings-open #settings { display: flex; }
+.s-head { display: flex; align-items: center; gap: 6px; padding: 12px 10px 8px; }
+.s-head h1 { font-size: 15px; font-weight: 600; }
+.s-head button { padding: 2px 8px; border-radius: 6px; font-size: 16px; }
+.s-head button:hover { background: var(--line); }
+.s-body { flex: 1; overflow-y: auto; padding: 0 12px 16px; }
+.s-body h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: 16px 4px 6px; }
+.group { background: var(--card); border-radius: 10px; border: 1px solid var(--line); }
+.group > * + * { border-top: 1px solid var(--line); }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; min-height: 38px; }
+.opt small { display: block; color: var(--muted); font-size: 11px; }
+/* Own look for the closed select and checkboxes; WebKitGTK otherwise paints them in the GTK theme. */
+.opt select { appearance: none; font: inherit; font-size: 12px; color: var(--text); cursor: pointer;
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2398989f' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+  border: 1px solid var(--line); border-radius: 7px; padding: 4px 26px 4px 10px; }
+.opt select:hover { border-color: var(--muted); }
+.opt select:focus { outline: none; border-color: var(--accent); }
+.cal input { appearance: none; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--muted);
+  display: grid; place-items: center; cursor: pointer; flex: none; }
+.cal input:focus-visible, .switch:focus-visible, button:focus-visible, .opt select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; }
+.cal input:checked { background: var(--accent); border-color: var(--accent); }
+.cal input:checked::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg); }
+.switch { width: 32px; height: 18px; border-radius: 99px; background: var(--line); position: relative; flex: none; transition: background .15s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px #0004; }
+.switch.on { background: var(--personal); }
+.switch.on::after { transform: translateX(14px); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { padding: 3px 10px; font-size: 12px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: #fff; }
+.account-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.account-head .who { flex: 1; min-width: 0; }
+.account-head .who small { display: block; color: var(--muted); font-size: 11px; }
+.logo { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+  background: var(--bg); border: 1px solid var(--line); flex: none; }
+.link-btn { color: var(--accent); font-size: 12px; padding: 2px 6px; border-radius: 6px; }
+.link-btn.danger { color: var(--danger); }
+.link-btn:hover { background: var(--line); }
+.cal { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 48px; font-size: 12px; }
+.cal .name { flex: 1; }
+.cal .dot { width: 10px; height: 10px; }
+.add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
+.providers { display: none; padding: 4px 8px 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
+.providers.show { display: grid; }
+#accounts .group { margin-bottom: 8px; }
+.account-head .who small.error, .add-status.error { color: var(--danger); }
+.add-status { padding: 0 12px 10px; font-size: 12px; color: var(--muted); }
+.client { margin-top: 8px; }
+.client summary { padding: 10px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.client-body { display: grid; gap: 6px; padding: 0 12px 12px; border: 0 !important; }
+.client-body small { color: var(--muted); font-size: 11px; }
+.client-body small.error { color: var(--danger); }
+.client-body input { font: inherit; font-size: 12px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; }
+.client-body input:focus { outline: none; border-color: var(--accent); }
+.client-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.provider { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); text-align: left; font-size: 12px; }
+.provider:hover:not(:disabled) { border-color: var(--accent); }
+.provider:disabled { opacity: .5; cursor: default; }
+.provider small { display: block; color: var(--muted); font-size: 10px; }
+.about { text-align: center; color: var(--muted); font-size: 11px; margin-top: 18px; line-height: 1.7; }
+.about b { color: var(--text); font-size: 13px; }
+
+footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px;
+  border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+footer button { padding: 2px 8px; border-radius: 6px; font-size: 18px; line-height: 1.2; }
+footer button:hover { background: var(--line); color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <div><h1 id="today"></h1><small id="summary"></small></div>
+  <div class="chips" id="chips"></div>
+</header>
+<section id="hero"></section>
+<nav class="tabs"><button data-day="0" class="on" data-i18n="day.today"></button><button data-day="1" data-i18n="day.tomorrow"></button><button data-day="7" id="week-tab" data-i18n="tab.week"></button></nav>
+<main id="list"></main>
+<footer>
+  <span id="sync"></span>
+  <span><button id="refresh" data-i18n-title="footer.refresh">⟳</button><button id="open-settings" data-i18n-title="footer.settings">⚙</button></span>
+</footer>
+
+<!-- Settings: mostly a design mock; language and menu bar are wired, theme works locally. -->
+<section id="settings">
+  <div class="s-head"><button id="close-settings" data-i18n-title="settings.back">‹</button><h1 data-i18n="settings.title"></h1></div>
+  <div class="s-body">
+    <h2 data-i18n="settings.accounts"></h2>
+    <div id="accounts"></div>
+    <div class="group">
+      <button class="add" id="add-account" data-i18n="settings.add_account"></button>
+      <div class="providers" id="providers">
+        <button class="provider" id="add-google"><span class="logo" style="color:#4285f4">G</span><span>Google<small>Gmail, Workspace</small></span></button>
+        <button class="provider" disabled><span class="logo" style="color:#0078d4">M</span><span>Microsoft<small data-i18n="settings.coming_soon"></small></span></button>
+        <button class="provider" disabled><span class="logo"></span><span>iCloud<small data-i18n="settings.coming_soon"></small></span></button>
+        <button class="provider" disabled><span class="logo">⟳</span><span>CalDAV / iCal<small data-i18n="settings.coming_soon"></small></span></button>
+      </div>
+      <div class="add-status" id="add-status" hidden></div>
+    </div>
+    <details class="group client" id="client">
+      <summary data-i18n="settings.client"></summary>
+      <div class="client-body">
+        <small id="client-state"></small>
+        <input id="client-id" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+        <input id="client-secret" type="password" data-i18n-placeholder="settings.client_secret" autocomplete="off">
+        <div class="client-actions"><button class="link-btn" id="client-save" data-i18n="settings.client_save"></button>
+          <button class="link-btn" id="client-reset" data-i18n="settings.client_reset"></button>
+          <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget#your-own-google-client-id" data-i18n="settings.client_help"></button></div>
+        <small class="error" id="client-error" hidden></small>
+        <small data-i18n="settings.client_desc"></small>
+      </div>
+    </details>
+
+    <h2 data-i18n="settings.notifications"></h2>
+    <div class="group">
+      <div class="opt"><span data-i18n="settings.notify"></span><span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.notify_minutes"></span><select data-minutes="1,5,10,15" data-selected="5"></select></div>
+      <div class="opt"><span><span data-i18n="settings.notify_start"></span><small data-i18n="settings.notify_start_desc"></small></span><span class="switch"></span></div>
+      <div class="opt"><span><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreen_desc"></small></span><span class="switch on"></span></div>
+      <div class="opt"><span><span data-i18n="settings.only_links"></span><small data-i18n="settings.only_links_desc"></small></span><span class="switch"></span></div>
+      <div class="opt"><span data-i18n="settings.sound"></span><span class="switch on"></span></div>
+    </div>
+
+    <h2 data-i18n="settings.appearance"></h2>
+    <div class="group">
+      <div class="opt"><span data-i18n="settings.theme"></span><div class="seg" id="theme"><button data-theme="" class="on" data-i18n="settings.theme_system"></button><button data-theme="light" data-i18n="settings.theme_light"></button><button data-theme="dark" data-i18n="settings.theme_dark"></button></div></div>
+      <div class="opt"><span data-i18n="settings.language"></span><select id="language"></select></div>
+      <div class="opt"><span><span data-i18n="settings.week_tab"></span><small data-i18n="settings.week_tab_desc"></small></span><span class="switch on" id="week-toggle"></span></div>
+      <div class="opt"><span data-i18n="settings.show_declined"></span><span class="switch on"></span></div>
+      <div class="opt" id="tray-style-opt" hidden><span><span data-i18n="settings.tray_style"></span><small data-i18n="settings.tray_style_desc"></small></span><div class="seg" id="tray-style"><button data-style="icon" data-i18n="settings.tray_style_icon"></button><button data-style="both" data-i18n="settings.tray_style_both"></button><button data-style="text" data-i18n="settings.tray_style_text"></button></div></div>
+      <div class="opt" id="tray-length-opt" hidden><span><span data-i18n="settings.tray_length"></span><small data-i18n="settings.tray_length_desc"></small></span><select id="tray-length"></select></div>
+    </div>
+
+    <h2 data-i18n="settings.general"></h2>
+    <div class="group">
+      <div class="opt"><span data-i18n="settings.autostart"></span><span class="switch on"></span></div>
+      <div class="opt"><span data-i18n="settings.sync_every"></span><select data-minutes="1,5,15" data-selected="1"></select></div>
+    </div>
+
+    <div class="about"><b>Do Not Forget</b><br><span id="version"></span><br>
+      <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget">github.com/mkelcik/do-not-forget</button></div>
+  </div>
+</section>
+
+<script type="module">
+import { Events } from "/wails/runtime.js";
+import { t, i18n, onLanguage, setLanguage, hm, dur, esc, joinLabel, openURL, linkify } from "/i18n.js";
+
+// Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
+let events = [], synced = null, sources = 1;
+const at = (day, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() + day); d.setHours(h, m, 0, 0); return d; };
+
+const hidden = new Set();
+let day = 0, open = null; // open: id of the expanded event
+
+// Countdown for today; a later meeting gets its day instead ("in 98 h" reads like today).
+const until = (d) => {
+  const n = [...Array(8).keys()].find((i) => sameDay(d, i)) ?? 7;
+  if (n > 0) return dayName(n);
+  const m = Math.round((d - Date.now()) / 60000);
+  return m < 60 ? t("in.min", { m }) : t("in.hmin", { h: Math.floor(m / 60), m: m % 60 });
+};
+const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
+const visible = () => events.filter((e) => !hidden.has(e.calendar));
+const rsvp = (e) => `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
+  `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>`;
+const agoMin = (m) => m < 1 ? t("ago.now") : t("ago.min", { m });
+const ago = (d) => agoMin(Math.round((Date.now() - d) / 60000));
+const initial = (n) => (n || "?").charAt(0).toUpperCase();
+
+function render() {
+  const now = new Date();
+  document.getElementById("today").textContent = now.toLocaleDateString(i18n.lang, { weekday: "long", day: "numeric", month: "long" });
+  const todayLeft = visible().filter((e) => sameDay(e.start, 0) && !e.allDay && e.response !== "no" && e.end > now);
+  document.getElementById("summary").textContent = t("header.left", { count: todayLeft.length });
+  document.getElementById("sync").textContent = synced ? t("sync.done", { ago: ago(synced) }) : t("sync.loading");
+
+  const calendars = new Map(events.map((e) => [e.calendar, e.color]));
+  document.getElementById("chips").innerHTML = [...calendars].map(([name, color]) =>
+    `<button class="chip ${hidden.has(name) ? "off" : ""}" data-cal="${esc(name)}"><span class="dot" style="background:${color}"></span>${esc(name)}</button>`).join("");
+
+  // Hero: running meeting, else next one.
+  const next = visible().filter((e) => !e.allDay && e.response !== "no" && e.end > now).sort((a, b) => a.start - b.start)[0];
+  const hero = document.getElementById("hero");
+  if (!next) { hero.innerHTML = ""; } else {
+    const running = next.start <= now;
+    const pct = running ? (now - next.start) / (next.end - next.start) * 100 : 0;
+    hero.innerHTML = `<div class="hero" style="--c:${next.color}">
+      <div class="when">${running ? t("hero.running", { time: hm(next.end) }) : t("hero.next", { in: until(next.start) })}</div>
+      <div class="title">${esc(next.title)}</div>
+      <div class="meta">${hm(next.start)} – ${hm(next.end)} · ${dur(next)}${next.location ? " · " + esc(next.location) : ""}</div>
+      ${running ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ""}
+      ${next.response === "pending" ? `<div class="ask">${t("rsvp.question")} ${rsvp(next)}</div>` : ""}
+      ${next.link ? `<div class="row"><span class="meta">${t("hero.attendees", { count: (next.attendees || []).length })}</span><button class="join" data-url="${esc(next.link)}">${joinLabel(next)}</button></div>` : ""}
+    </div>`;
+  }
+
+  // List: one day, or the next 7 days with a header per day (empty days skipped).
+  let html;
+  if (!sources) {
+    html = `<div class="empty">${t("list.no_calendars")}<br><button class="link-btn" id="connect">${t("list.connect")}</button></div>`;
+  } else if (day === 7) {
+    html = [...Array(7).keys()].map((n) => { const h = dayHTML(n, now); return h && `<div class="day-head">${dayName(n)}</div>${h}`; })
+      .join("") || `<div class="empty">${t("list.free_week")}</div>`;
+  } else {
+    html = dayHTML(day, now) || `<div class="empty">${t("list.free_day")}</div>`;
+  }
+  document.getElementById("list").innerHTML = html;
+}
+
+const dayName = (n) => n === 0 ? t("day.today") : n === 1 ? t("day.tomorrow")
+  : at(n, 0).toLocaleDateString(i18n.lang, { weekday: "long", day: "numeric", month: "numeric" });
+
+// dayHTML renders day n (0 = today); "" when there's nothing that day.
+function dayHTML(n, now) {
+  const list = visible().filter((e) => sameDay(e.start, n)).sort((a, b) => a.start - b.start);
+  if (!list.length) return "";
+  const timed = list.filter((e) => !e.allDay);
+  let html = list.filter((e) => e.allDay).map((e) =>
+    `<div class="allday" style="--c:${e.color}"><span class="name">📅 ${esc(e.title)}</span>
+      <span class="cal-name">${esc(e.calendar)}</span></div>`).join(""); // which account/calendar, like timed rows
+  // Overlapping events form one cluster; clusters of 2+ render as a conflict group.
+  // Declined events never conflict: they sit on their own without breaking the active cluster.
+  const clusters = [];
+  let active = null;
+  for (const e of timed) {
+    if (e.response === "no") { clusters.push({ start: e.start, end: e.end, items: [e] }); continue; }
+    if (active && e.start < active.end) { active.items.push(e); if (e.end > active.end) active.end = e.end; }
+    else { active = { start: e.start, end: e.end, items: [e] }; clusters.push(active); }
+  }
+  let nowShown = n !== 0;
+  for (const c of clusters) {
+    if (!nowShown && c.start > now) { html += `<div class="now">${hm(now)}</div>`; nowShown = true; }
+    const rows = c.items.map(row).join("");
+    html += c.items.length < 2 ? rows : `<div class="conflict ${c.end < now ? "past" : ""}">
+      <div class="conflict-head">${t("list.conflict", { from: hm(c.start), to: hm(c.end) })}</div>${rows}</div>`;
+  }
+  if (!nowShown) html += `<div class="now">${hm(now)}</div>`;
+  return html;
+}
+
+function row(e) {
+  if (open === e.id) return `<div class="open-card" style="--c:${e.color}">${rowHTML(e)}${detail(e)}</div>`;
+  return rowHTML(e);
+}
+
+function rowHTML(e) {
+  const now = new Date();
+  const tag = e.response === "pending" ? `<span class="tag pending">${t("tag.pending")}</span>`
+    : e.response === "maybe" ? `<span class="tag maybe">${t("tag.maybe")}</span>` : "";
+  return `<div class="ev ${e.end < now ? "past" : ""} ${e.response ? "rsvp-" + e.response : ""}" data-id="${esc(e.id)}" style="--c:${e.color}">
+      <div class="time">${hm(e.start)}<small>${hm(e.end)}</small></div>
+      <div class="bar"></div>
+      <div class="body"><div class="name">${esc(e.title)}${tag}</div>
+        <div class="sub">${dur(e)} · ${esc(e.calendar)}${e.location ? " · " + esc(e.location) : ""}</div></div>
+      ${e.link && e.end > now ? `<button class="cam" data-url="${esc(e.link)}">${esc(e.service || t("join"))}</button>` : ""}
+    </div>`;
+}
+
+// Line breaks kept, links clickable; a long description folds to a few lines with "Show more".
+const expanded = new Set();
+function description(e) {
+  const long = e.description.length > 400 || e.description.split("\n").length > 6;
+  const folded = long && !expanded.has(e.id);
+  return `<div class="desc ${folded ? "folded" : ""}">${linkify(e.description)}</div>` +
+    (long ? `<button class="link-btn more" data-more="${esc(e.id)}">${t(folded ? "detail.more" : "detail.less")}</button>` : "");
+}
+
+function detail(e) {
+  const people = (e.attendees || []).map((p) =>
+    `<span class="person ${esc(p.status)}"><b>${esc(initial(p.name))}</b>${esc(p.name || "")}</span>`).join("");
+  const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">${t("join")}</button>` : "") +
+    (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : "");
+  const body = [
+    e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
+    e.description && `<div><div class="k">${t("detail.description")}</div>${description(e)}</div>`,
+    e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp(e)}</div>`,
+    people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
+    actions && `<div class="actions">${actions}</div>`,
+  ].filter(Boolean).join("");
+  return body && `<div class="detail">${body}</div>`; // nothing to show → just the outlined row
+}
+
+// Settings › Accounts, from the backend's "accounts" event.
+let accounts = { accounts: [], google: false, adding: false, error: "", removing: [] };
+function renderAccounts() {
+  const removing = new Set(accounts.removing || []);
+  document.getElementById("accounts").innerHTML = accounts.accounts.map((a) => `<div class="group">
+      <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
+        <div class="who">${esc(a.email)}${removing.has(a.email) ? `<small>${t("settings.disconnecting")}</small>`
+          : a.error ? `<small class="error">${t("settings.account_error", { error: esc(a.error) })}</small>`
+          : synced ? `<small>${t("settings.synced", { provider: "Google", ago: ago(synced) })}</small>` : ""}</div>
+        <button class="link-btn danger" data-remove="${esc(a.email)}" ${removing.has(a.email) ? "disabled" : ""}>${t("settings.disconnect")}</button></div>
+      ${a.calendars.map((c) => `<label class="cal"><input type="checkbox" data-email="${esc(a.email)}" data-cal="${esc(c.id)}" ${c.on ? "checked" : ""}>
+        <span class="dot" style="background:${esc(c.color)}"></span><span class="name">${esc(c.name)}</span></label>`).join("")}
+    </div>`).join("");
+  // The backend refuses too; this just doesn't offer it while a disconnect is finishing.
+  document.getElementById("add-google").disabled = !accounts.google || accounts.adding || removing.size > 0;
+  const status = document.getElementById("add-status");
+  const msg = accounts.adding ? t("settings.google_waiting")
+    : accounts.error ? t("settings.google_failed", { error: accounts.error })
+    : accounts.google ? "" : t("settings.google_unavailable");
+  status.hidden = !msg;
+  status.textContent = msg;
+  status.classList.toggle("error", !accounts.adding && !!accounts.error);
+
+  const c = accounts.client || {};
+  document.getElementById("client-state").textContent = c.own ? t("settings.client_own", { id: c.own })
+    : c.builtin ? t("settings.client_builtin") : t("settings.client_none");
+  document.getElementById("client-reset").hidden = !c.own;
+  const err = document.getElementById("client-error");
+  err.hidden = !c.error;
+  err.textContent = c.error ? t("settings.google_failed", { error: c.error }) : "";
+  if (!c.builtin && !c.own) document.getElementById("client").open = true; // the only way to use Google
+}
+Events.On("accounts", ({ data }) => { accounts = data; renderAccounts(); });
+Events.Emit("accounts:get");
+document.getElementById("accounts").addEventListener("change", (ev) => {
+  const box = ev.target.closest("input[data-cal]");
+  if (box) Events.Emit("calendar:toggle", { email: box.dataset.email, id: box.dataset.cal, on: box.checked });
+});
+
+// Settings texts that need values: accounts, minute options, the language list.
+function fillSettings() {
+  renderAccounts();
+  document.querySelectorAll("select[data-minutes]").forEach((sel) => {
+    const cur = sel.value || sel.dataset.selected;
+    sel.innerHTML = sel.dataset.minutes.split(",").map((m) =>
+      `<option value="${m}" ${m === cur ? "selected" : ""}>${t("dur.min", { m })}</option>`).join("");
+  });
+  document.getElementById("language").innerHTML = [{ code: "", name: t("settings.language_system") }, ...i18n.languages]
+    .map((l) => `<option value="${esc(l.code)}" ${l.code === i18n.setting ? "selected" : ""}>${esc(l.name)}</option>`).join("");
+  document.getElementById("version").textContent = t("settings.version", { version: i18n.version });
+  document.getElementById("tray-style-opt").hidden = i18n.platform !== "darwin"; // other trays take no text
+  document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b.dataset.style === i18n.trayStyle));
+  document.getElementById("tray-length-opt").hidden = i18n.platform !== "darwin" || i18n.trayStyle === "icon";
+  document.getElementById("tray-length").innerHTML = [15, 20, 25, 30, 40, 50].map((n) =>
+    `<option value="${n}" ${n === i18n.trayTitleMax ? "selected" : ""}>${t("settings.tray_length_chars", { count: n })}</option>`).join("");
+}
+document.getElementById("tray-length").addEventListener("change", (ev) => {
+  i18n.trayTitleMax = +ev.target.value;
+  Events.Emit("tray:length", i18n.trayTitleMax);
+});
+document.getElementById("language").addEventListener("change", (ev) => setLanguage(ev.target.value));
+onLanguage(() => { fillSettings(); render(); });
+
+document.addEventListener("click", (ev) => {
+  const t = ev.target;
+  const ans = t.closest("[data-respond]");
+  if (ans) {
+    const e = events.find((x) => x.id === ans.dataset.id);
+    if (e) e.response = ans.dataset.respond; // optimistic, the backend refresh confirms
+    Events.Emit("respond", { id: ans.dataset.id, response: ans.dataset.respond });
+    return render();
+  }
+  if (t.closest("#connect")) {
+    document.body.classList.add("settings-open");
+    return document.getElementById("providers").classList.add("show");
+  }
+  if (t.closest("#open-settings")) return document.body.classList.add("settings-open");
+  if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
+  if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
+  if (t.closest("#add-google")) return Events.Emit("account:add");
+  if (t.closest("#client-save")) {
+    const id = document.getElementById("client-id"), secret = document.getElementById("client-secret");
+    Events.Emit("client:set", { id: id.value, secret: secret.value });
+    secret.value = ""; // not kept in the page
+    return;
+  }
+  if (t.closest("#client-reset")) return Events.Emit("client:set", { id: "", secret: "" });
+  const remove = t.closest("[data-remove]");
+  if (remove) return Events.Emit("account:remove", remove.dataset.remove);
+  const sw = t.closest(".switch");
+  if (sw) {
+    const on = sw.classList.toggle("on"); // mock: not persisted yet
+    if (sw.id === "week-toggle") {
+      document.getElementById("week-tab").hidden = !on;
+      if (!on && day === 7) document.querySelector('.tabs button[data-day="0"]').click();
+    }
+    return;
+  }
+  const theme = t.closest("#theme button");
+  if (theme) {
+    document.querySelectorAll("#theme button").forEach((b) => b.classList.toggle("on", b === theme));
+    if (theme.dataset.theme) document.documentElement.dataset.theme = theme.dataset.theme;
+    else delete document.documentElement.dataset.theme;
+    return;
+  }
+  const style = t.closest("#tray-style button");
+  if (style) {
+    i18n.trayStyle = style.dataset.style;
+    document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b === style));
+    document.getElementById("tray-length-opt").hidden = i18n.trayStyle === "icon";
+    return Events.Emit("tray:style", style.dataset.style);
+  }
+  const link = t.closest("[data-url]");
+  if (link) return openURL(link.dataset.url);
+  if (t.closest("#refresh")) return Events.Emit("refresh");
+  const chip = t.closest(".chip");
+  if (chip) { const c = chip.dataset.cal; hidden.has(c) ? hidden.delete(c) : hidden.add(c); return render(); }
+  const tab = t.closest(".tabs button");
+  if (tab) {
+    day = +tab.dataset.day; open = null;
+    document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b === tab));
+    return render();
+  }
+  const more = t.closest("[data-more]");
+  if (more) {
+    const id = more.dataset.more;
+    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+    return render();
+  }
+  const row = t.closest(".ev");
+  if (row) { open = open === row.dataset.id ? null : row.dataset.id; render(); }
+});
+
+Events.On("events", ({ data }) => {
+  events = (data.events ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  synced = new Date(data.synced);
+  sources = data.sources;
+  render();
+  renderAccounts(); // "synced … ago"
+});
+Events.Emit("refresh");
+render();
+setInterval(render, 30000);
+</script>
+</body>
+</html>
