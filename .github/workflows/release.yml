@@ -93,3 +93,32 @@ jobs:
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease";; esac  # v1.2.3-rc1
           gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" --generate-notes --verify-tag $prerelease
+
+  # Bumps the cask in mkelcik/homebrew-tap to this release. Needs HOMEBREW_TAP_TOKEN: a
+  # fine-grained token with Contents read & write on that repository only. Without it, or for a
+  # pre-release, the release still succeeds and the cask stays as it is.
+  homebrew:
+    needs: publish
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Update the cask
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN not set; the Homebrew cask wasn't updated"; exit 0
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          sha="$(gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" -p SHA256SUMS -O - |
+            awk '$2 == "do-not-forget_darwin_arm64.zip" { print $1 }')"
+          test -n "$sha" || { echo "::error::no darwin_arm64 checksum in SHA256SUMS"; exit 1; }
+          git clone -q "https://x-access-token:${TAP_TOKEN}@github.com/mkelcik/homebrew-tap.git" tap
+          cd tap
+          sed -i -E "s/^  version \".*\"/  version \"$version\"/; s/^  sha256 \".*\"/  sha256 \"$sha\"/" Casks/do-not-forget.rb
+          git diff --quiet && { echo "cask already at $version"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "do-not-forget $version"
+          git push -q

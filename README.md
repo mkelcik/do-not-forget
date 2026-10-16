@@ -26,7 +26,13 @@ Website: <https://mkelcik.github.io/do-not-forget/>
 
 ## Install
 
-Download the archive for your system from [Releases](https://github.com/mkelcik/do-not-forget/releases):
+On macOS with [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask mkelcik/tap/do-not-forget
+```
+
+Or download the archive for your system from [Releases](https://github.com/mkelcik/do-not-forget/releases):
 
 | System | File | Notes |
 | --- | --- | --- |

@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Homebrew: `brew install --cask mkelcik/tap/do-not-forget`; releases update the cask.
+
 ## [0.8.0] - 2026-10-16
 
 First public release.
