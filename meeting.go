@@ -22,6 +22,13 @@ func nativeMeetingURL(link string) string {
 		if m == nil {
 			return ""
 		}
+		// Only the meeting number and passcode carry over. Anything else, such as the registration
+		// token tk that registration-only meetings need, stays with the browser, which keeps it.
+		for k := range u.Query() {
+			if k != "pwd" {
+				return ""
+			}
+		}
 		q := url.Values{"action": {"join"}, "confno": {m[1]}}
 		if pwd := u.Query().Get("pwd"); pwd != "" {
 			q.Set("pwd", pwd)

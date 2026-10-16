@@ -7,9 +7,12 @@ import (
 
 func TestNativeMeetingURL(t *testing.T) {
 	for link, want := range map[string]string{
-		"https://zoom.us/j/123456?pwd=abc":                                                      "zoommtg://zoom.us/join?action=join&confno=123456&pwd=abc",
-		"https://purestorage.zoom.us/j/98531439918":                                             "zoommtg://purestorage.zoom.us/join?action=join&confno=98531439918",
-		"https://us02web.zoom.us/w/555?tk=x&pwd=p%2F1":                                          "zoommtg://us02web.zoom.us/join?action=join&confno=555&pwd=p%2F1",
+		"https://zoom.us/j/123456?pwd=abc":          "zoommtg://zoom.us/join?action=join&confno=123456&pwd=abc",
+		"https://purestorage.zoom.us/j/98531439918": "zoommtg://purestorage.zoom.us/join?action=join&confno=98531439918",
+		"https://us02web.zoom.us/w/555?pwd=p%2F1":   "zoommtg://us02web.zoom.us/join?action=join&confno=555&pwd=p%2F1",
+		// A registration token (or anything else unknown) would be lost: the browser keeps it.
+		"https://zoom.us/j/123?tk=reg-token&pwd=abc":                                            "",
+		"https://us02web.zoom.us/w/555?tk=reg-token":                                            "",
 		"https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0?context=%7b%7d": "msteams:/l/meetup-join/19%3ameeting_x%40thread.v2/0?context=%7b%7d",
 		// No native form: the browser opens these.
 		"https://zoom.us/my/room":                                 "", // personal link, no meeting number
