@@ -8,15 +8,16 @@ A tray app for Linux, macOS and Windows that keeps your next meeting one glance 
 in the spirit of [MeetingBar](https://github.com/leits/MeetingBar).
 
 - **Next meeting in the tray**: hover for title, calendar and countdown; click for the agenda.
-- **Today and tomorrow** from several calendars merged into one list, with overlapping meetings grouped as conflicts.
+- **Google Calendar**, several accounts at once: today, tomorrow and the next 7 days merged into one list,
+  with overlapping meetings grouped as conflicts. Pick which calendars to show.
 - **Join with one click**: Google Meet, Zoom and Teams links are detected.
 - **RSVP** (yes / maybe / no) without opening the calendar.
 - **Reminders** before a meeting, and a **maximised alert at the start** for when a notification goes unnoticed.
 - **Mute** reminders for an hour, the rest of the day, or until you turn them back on.
 - **Updates itself** from GitHub Releases, with checksum verification.
 
-> Status: early development. The UI and reminders work against a local development
-> source; the Google Calendar connector is in progress.
+> Status: early development. Google Calendar works; other providers (Microsoft 365, iCloud,
+> CalDAV) are planned.
 
 ## Install
 
@@ -28,6 +29,32 @@ Download the archive for your system from [Releases](https://github.com/mkelcik/
 | macOS (Apple Silicon) | `do-not-forget_darwin_arm64.zip` | Not notarized yet: right-click the app → Open on first launch. |
 | Windows x86-64 / ARM64 | `do-not-forget_windows_*.zip` | SmartScreen may warn about an unknown publisher. |
 
+## Google Calendar
+
+Settings → **+ Add account** → Google signs you in in your browser. The app asks to read and
+answer your events (`calendar.events`) and to list your calendars
+(`calendar.calendarlist.readonly`). Tokens are stored only in the system keychain (macOS
+Keychain, Secret Service on Linux, Windows Credential Manager), never in a file;
+**Disconnect** revokes the access at Google and deletes them.
+
+### Your own Google client ID
+
+Release builds sign in through the app's own Google OAuth client. You can use your own
+instead, e.g. when you build from source, your organisation only allows its own apps, or
+you'd rather not go through ours:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) create a project and enable the
+   **Google Calendar API**.
+2. **Google Auth Platform → Branding**: fill in the app name and emails.
+3. **Audience**: *Internal* if everyone is in your Google Workspace, otherwise *External* and
+   add yourself under *Test users* (or publish the app; in *Testing* tokens expire after 7 days).
+4. **Data Access → Add or remove scopes**: `.../auth/calendar.events` and
+   `.../auth/calendar.calendarlist.readonly`.
+5. **Clients → Create client**, type **Desktop app**. Copy the client ID and secret.
+6. In the app: Settings → **Own Google client ID**, paste both, Save, then add your account.
+
+Accounts remember the client they signed in with; after switching clients, connect them again.
+
 ## Development
 
 Requirements: Go 1.27.2+, Make, and on Linux `libgtk-4-dev libwebkitgtk-6.0-dev`.
@@ -35,7 +62,15 @@ Requirements: Go 1.27.2+, Make, and on Linux `libgtk-4-dev libwebkitgtk-6.0-dev`
 ```bash
 make tools   # golangci-lint, govulncheck (re-run after upgrading Go)
 make run     # starts with fake events from dummy.json
+make run RUNARGS=   # only your connected accounts
 make ci      # everything CI checks
+```
+
+For Google in dev builds put a client in `.env` (ignored by Git), or use your own client in Settings:
+
+```
+GOOGLE_CLIENT_ID=….apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-…
 ```
 
 `dummy.json` is a development event source: times are `"HH:MM"` (with `"day": 1` for tomorrow)

@@ -32,7 +32,7 @@ func (m *accountManager) busy() bool {
 
 // connect stores a freshly signed-in account. Connecting one that's already there replaces its
 // token and keeps its calendar choice; the old session stops saving tokens first.
-func (m *accountManager) connect(email string, tok *oauth2.Token, hidden []string) error {
+func (m *accountManager) connect(email string, c oauthClient, tok *oauth2.Token, hidden []string) error {
 	if m.busy() { // refuse at once rather than wait out a revoke
 		return errBusy
 	}
@@ -51,16 +51,21 @@ func (m *accountManager) connect(email string, tok *oauth2.Token, hidden []strin
 	if err := saveToken(email, tok); err != nil {
 		return fmt.Errorf("keychain: %w", err) // no keychain, no account: tokens never go to a file
 	}
-	m.saveConfig(func(c *Config) {
-		for _, a := range c.Accounts {
+	clientID := c.ID
+	if clientID == googleClientID {
+		clientID = "" // the built-in one, whatever it is in a later build
+	}
+	m.saveConfig(func(cfg *Config) {
+		for i, a := range cfg.Accounts {
 			if a.Email == email {
 				hidden = a.Hidden
+				cfg.Accounts[i].ClientID = clientID
 				return
 			}
 		}
-		c.Accounts = append(c.Accounts, Account{Email: email, Hidden: hidden})
+		cfg.Accounts = append(cfg.Accounts, Account{Email: email, ClientID: clientID, Hidden: hidden})
 	})
-	g := newGoogleSource(email, tok, hidden)
+	g := newGoogleSource(email, c, tok, hidden)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if i := slices.IndexFunc(*m.list, func(a *googleSource) bool { return a.email == email }); i >= 0 {
@@ -69,6 +74,27 @@ func (m *accountManager) connect(email string, tok *oauth2.Token, hidden []strin
 		*m.list = append(*m.list, g)
 	}
 	return nil
+}
+
+// errClientGone marks accounts whose OAuth client is no longer set up: their tokens can't be refreshed.
+var errClientGone = errors.New("its Google client ID was changed; connect the account again")
+
+// dropClients ends the sessions of accounts whose client is no longer usable after the own
+// client changed; they stay listed with errClientGone. Their tokens stay in the keychain until
+// they're reconnected or disconnected.
+func (m *accountManager) dropClients(usable func(clientID string) bool) {
+	m.ops.Lock()
+	defer m.ops.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i, g := range *m.list {
+		if g.client != nil && !usable(g.clientID) {
+			_ = g.close(false)
+			b := brokenGoogleSource(g.email, errClientGone)
+			b.clientID = g.clientID
+			(*m.list)[i] = b
+		}
+	}
 }
 
 // disconnect revokes g's token, deletes it from the keychain and drops the account. g is the

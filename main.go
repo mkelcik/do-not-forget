@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"html"
@@ -112,18 +113,48 @@ func main() {
 	if *dummyPath != "" {
 		dummy = &dummySource{path: *dummyPath, base: time.Now()}
 	}
-	// Google accounts, guarded by mu. A token missing from the keychain leaves the account
-	// listed with its error, so Settings can offer to connect it again.
+	// The own Google OAuth client from Settings, if any (guarded by mu); otherwise the built-in one.
+	var ownClient oauthClient
+	if cfg.GoogleClientID != "" {
+		if secret, err := loadClientSecret(); err != nil {
+			log.Printf("own Google client: keychain: %v", err)
+		} else {
+			ownClient = oauthClient{cfg.GoogleClientID, secret}
+		}
+	}
+	activeClient := func() oauthClient { // mu held
+		if ownClient.ID != "" {
+			return ownClient
+		}
+		return builtinClient()
+	}
+	clientFor := func(id string) (oauthClient, bool) { // mu held; "" is the built-in one
+		switch id {
+		case "", googleClientID:
+			return builtinClient(), googleClientID != ""
+		case ownClient.ID:
+			return ownClient, true
+		}
+		return oauthClient{}, false
+	}
+
+	// Google accounts, guarded by mu. A token missing from the keychain, or a client that's no
+	// longer set up, leaves the account listed with its error, so it can be connected again.
 	var accounts []*googleSource
 	for _, a := range cfg.Accounts {
+		c, ok := clientFor(a.ClientID)
 		tok, err := loadToken(a.Email)
-		if err != nil {
+		switch {
+		case !ok:
+			accounts = append(accounts, brokenGoogleSource(a.Email, errClientGone))
+		case err != nil:
 			accounts = append(accounts, brokenGoogleSource(a.Email, fmt.Errorf("keychain: %w", err)))
-			continue
+		default:
+			accounts = append(accounts, newGoogleSource(a.Email, c, tok, a.Hidden))
 		}
-		accounts = append(accounts, newGoogleSource(a.Email, tok, a.Hidden))
 	}
 	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
+	clientErr := ""             // saving the own client failed, guarded by mu
 	mgr := &accountManager{mu: &mu, list: &accounts, removing: map[string]bool{}, saveConfig: saveConfig}
 
 	// The tray icon: a template on macOS, so it follows a light or dark menu bar.
@@ -182,8 +213,10 @@ func main() {
 	emitAccounts = func() {
 		mu.Lock()
 		gs := append([]*googleSource{}, accounts...)
-		state := map[string]any{"google": googleClientID != "", "adding": adding, "error": addErr,
-			"removing": slices.Collect(maps.Keys(mgr.removing))}
+		state := map[string]any{"google": activeClient().ID != "", "adding": adding, "error": addErr,
+			"removing": slices.Collect(maps.Keys(mgr.removing)),
+			// Settings › own client ID; the secret never goes back to the page.
+			"client": map[string]any{"own": ownClient.ID, "builtin": googleClientID != "", "error": clientErr}}
 		mu.Unlock()
 		list := make([]map[string]any, 0, len(gs))
 		for _, g := range gs {
@@ -224,16 +257,58 @@ func main() {
 		if mgr.busy() {
 			return errBusy
 		}
-		tok, err := googleLogin(context.Background(), app.Browser.OpenURL)
+		mu.Lock()
+		c := activeClient()
+		mu.Unlock()
+		tok, err := googleLogin(context.Background(), c, app.Browser.OpenURL)
 		if err != nil {
 			return err
 		}
-		email, hidden, err := accountEmail(context.Background(), tok)
+		email, hidden, err := accountEmail(context.Background(), c, tok)
 		if err != nil {
 			return err
 		}
-		return mgr.connect(email, tok, hidden)
+		return mgr.connect(email, c, tok, hidden)
 	}
+
+	// The own OAuth client: set or cleared in Settings. Accounts signed in through a client
+	// that's no longer set up stop syncing and ask to be connected again.
+	setOwnClient := func(c oauthClient) error {
+		if c.ID != "" {
+			if !validClientID(c.ID) || c.Secret == "" {
+				return errors.New("needs a Client ID ending in .apps.googleusercontent.com and its secret")
+			}
+			if err := saveClientSecret(c.Secret); err != nil {
+				return fmt.Errorf("keychain: %w", err)
+			}
+		} else if err := deleteClientSecret(); err != nil {
+			return fmt.Errorf("keychain: %w", err)
+		}
+		saveConfig(func(cfg *Config) { cfg.GoogleClientID = c.ID })
+		mu.Lock()
+		ownClient = c
+		usable := map[string]bool{ownClient.ID: ownClient.ID != "", googleClientID: googleClientID != ""}
+		mu.Unlock()
+		mgr.dropClients(func(id string) bool { return usable[id] })
+		return nil
+	}
+	app.Event.On("client:set", func(ev *application.CustomEvent) {
+		var req struct{ ID, Secret string }
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		go func() {
+			err := setOwnClient(oauthClient{strings.TrimSpace(req.ID), strings.TrimSpace(req.Secret)})
+			mu.Lock()
+			clientErr = ""
+			if err != nil {
+				log.Printf("own Google client: %v", err)
+				clientErr = err.Error()
+			}
+			mu.Unlock()
+			refresh() // also re-emits the accounts
+		}()
+	})
 	app.Event.On("account:add", func(*application.CustomEvent) {
 		mu.Lock()
 		if adding {

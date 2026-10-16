@@ -27,11 +27,16 @@ type Config struct {
 	TrayTitleMax int `json:"trayTitleMax"`
 	// Accounts are the connected calendar accounts; their tokens are in the system keychain.
 	Accounts []Account `json:"accounts"`
+	// GoogleClientID is the user's own OAuth client, used instead of the built-in one; its
+	// secret is in the keychain.
+	GoogleClientID string `json:"googleClientId,omitempty"`
 }
 
 // Account is a connected Google account.
 type Account struct {
 	Email string `json:"email"`
+	// ClientID is the OAuth client the account signed in with; empty means the built-in one.
+	ClientID string `json:"clientId,omitempty"`
 	// Hidden lists the IDs of calendars unticked in Settings; new calendars show up ticked.
 	Hidden []string `json:"hidden,omitempty"`
 }

@@ -23,11 +23,36 @@ import (
 )
 
 // Google OAuth client of the app, set at build time (-X, from .env or CI secrets).
-// Empty in a build without them: the Google provider is then unavailable.
+// Empty in a build without them: Google then needs the user's own client from Settings.
 var (
 	googleClientID     string
 	googleClientSecret string // Google requires it for desktop clients too, even with PKCE
 )
+
+// oauthClient is a Google OAuth client: the one built into the app, or the user's own from
+// Settings (for forks, builds without ours, or policies that only allow their own). Tokens
+// belong to the client that issued them, so every account remembers its client's ID.
+type oauthClient struct{ ID, Secret string }
+
+func builtinClient() oauthClient { return oauthClient{googleClientID, googleClientSecret} }
+
+// validClientID is the shape of Google OAuth client IDs.
+func validClientID(id string) bool {
+	return strings.HasSuffix(id, ".apps.googleusercontent.com") && !strings.ContainsAny(id, " /|")
+}
+
+// The own client's secret is kept in the keychain like tokens (its ID is in the config).
+// The entry name has no "@", so it can't clash with an account.
+const clientSecretKey = "google-client-secret"
+
+func saveClientSecret(s string) error   { return keyring.Set(keyringService, clientSecretKey, s) }
+func loadClientSecret() (string, error) { return keyring.Get(keyringService, clientSecretKey) }
+func deleteClientSecret() error {
+	if err := keyring.Delete(keyringService, clientSecretKey); err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return err
+	}
+	return nil
+}
 
 // calendar.events: read events and RSVP. calendarlist.readonly: names and colours of calendars.
 var googleScopes = []string{
@@ -48,10 +73,10 @@ var (
 
 var errDisconnected = errors.New("account disconnected")
 
-func googleConfig(redirect string) *oauth2.Config {
+func (c oauthClient) config(redirect string) *oauth2.Config {
 	return &oauth2.Config{
-		ClientID:     googleClientID,
-		ClientSecret: googleClientSecret,
+		ClientID:     c.ID,
+		ClientSecret: c.Secret,
 		// Not oauth2/google: it pulls in the GCE metadata client.
 		Endpoint: oauth2.Endpoint{ //nolint:gosec // G101: public endpoint URLs, not credentials
 			AuthURL:  "https://accounts.google.com/o/oauth2/v2/auth",
@@ -69,16 +94,16 @@ func oauthCtx() context.Context {
 
 // googleLogin runs the installed-app flow: the browser signs in and redirects to a one-shot
 // server on 127.0.0.1, PKCE protects the code. Gives up after 5 minutes.
-func googleLogin(ctx context.Context, openURL func(string) error) (*oauth2.Token, error) {
-	if googleClientID == "" {
-		return nil, errors.New("this build has no Google client ID")
+func googleLogin(ctx context.Context, c oauthClient, openURL func(string) error) (*oauth2.Token, error) {
+	if c.ID == "" {
+		return nil, errors.New("no Google client ID")
 	}
 	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = ln.Close() }()
-	conf := googleConfig(fmt.Sprintf("http://127.0.0.1:%d/", ln.Addr().(*net.TCPAddr).Port))
+	conf := c.config(fmt.Sprintf("http://127.0.0.1:%d/", ln.Addr().(*net.TCPAddr).Port))
 	verifier, state := oauth2.GenerateVerifier(), oauth2.GenerateVerifier()
 
 	type result struct {
@@ -241,11 +266,12 @@ func (s *savingTokenSource) close(forget bool) error {
 
 // googleSource is one Google account. Events come from every calendar the user hasn't hidden.
 type googleSource struct {
-	email  string
-	client *http.Client       // nil when the token couldn't be loaded
-	ts     *savingTokenSource // nil with client
-	life   context.Context    // cancelled by close, which aborts requests in flight
-	stop   context.CancelFunc
+	email    string
+	clientID string             // the OAuth client the token belongs to
+	client   *http.Client       // nil when the token couldn't be loaded
+	ts       *savingTokenSource // nil with client
+	life     context.Context    // cancelled by close, which aborts requests in flight
+	stop     context.CancelFunc
 
 	mu        sync.Mutex
 	hidden    map[string]bool // calendar IDs unticked in Settings
@@ -262,9 +288,10 @@ type Calendar struct {
 	On    bool   `json:"on"`
 }
 
-func newGoogleSource(email string, tok *oauth2.Token, hidden []string) *googleSource {
+func newGoogleSource(email string, c oauthClient, tok *oauth2.Token, hidden []string) *googleSource {
 	g := brokenGoogleSource(email, nil)
-	g.ts = &savingTokenSource{email: email, base: googleConfig("").TokenSource(oauthCtx(), tok), tok: tok}
+	g.clientID = c.ID
+	g.ts = &savingTokenSource{email: email, base: c.config("").TokenSource(oauthCtx(), tok), tok: tok}
 	g.client = oauth2.NewClient(oauthCtx(), g.ts)
 	g.client.Timeout = googleTimeout
 	for _, id := range hidden {
@@ -399,11 +426,11 @@ func (g *googleSource) calendarList(ctx context.Context) ([]gCalendar, error) {
 
 // accountEmail is the primary calendar's ID, which is the account's address;
 // it spares an extra openid/email scope.
-func accountEmail(ctx context.Context, tok *oauth2.Token) (email string, hidden []string, err error) {
+func accountEmail(ctx context.Context, c oauthClient, tok *oauth2.Token) (email string, hidden []string, err error) {
 	// A plain client: nothing to save yet, the account has no keychain entry.
 	g := brokenGoogleSource("", nil)
 	defer g.stop()
-	g.client = googleConfig("").Client(oauthCtx(), tok)
+	g.client = c.config("").Client(oauthCtx(), tok)
 	g.client.Timeout = googleTimeout
 	ctx, cancel := context.WithTimeout(ctx, googleTimeout)
 	defer cancel()

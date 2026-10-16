@@ -168,6 +168,15 @@ body.settings-open #settings { display: flex; }
 #accounts .group { margin-bottom: 8px; }
 .account-head .who small.error, .add-status.error { color: var(--danger); }
 .add-status { padding: 0 12px 10px; font-size: 12px; color: var(--muted); }
+.client { margin-top: 8px; }
+.client summary { padding: 10px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.client-body { display: grid; gap: 6px; padding: 0 12px 12px; border: 0 !important; }
+.client-body small { color: var(--muted); font-size: 11px; }
+.client-body small.error { color: var(--danger); }
+.client-body input { font: inherit; font-size: 12px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; }
+.client-body input:focus { outline: none; border-color: var(--accent); }
+.client-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .provider { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--bg); text-align: left; font-size: 12px; }
 .provider:hover:not(:disabled) { border-color: var(--accent); }
@@ -211,6 +220,19 @@ footer button:hover { background: var(--line); color: var(--text); }
       </div>
       <div class="add-status" id="add-status" hidden></div>
     </div>
+    <details class="group client" id="client">
+      <summary data-i18n="settings.client"></summary>
+      <div class="client-body">
+        <small id="client-state"></small>
+        <input id="client-id" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+        <input id="client-secret" type="password" data-i18n-placeholder="settings.client_secret" autocomplete="off">
+        <div class="client-actions"><button class="link-btn" id="client-save" data-i18n="settings.client_save"></button>
+          <button class="link-btn" id="client-reset" data-i18n="settings.client_reset"></button>
+          <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget#your-own-google-client-id" data-i18n="settings.client_help"></button></div>
+        <small class="error" id="client-error" hidden></small>
+        <small data-i18n="settings.client_desc"></small>
+      </div>
+    </details>
 
     <h2 data-i18n="settings.notifications"></h2>
     <div class="group">
@@ -403,6 +425,15 @@ function renderAccounts() {
   status.hidden = !msg;
   status.textContent = msg;
   status.classList.toggle("error", !accounts.adding && !!accounts.error);
+
+  const c = accounts.client || {};
+  document.getElementById("client-state").textContent = c.own ? t("settings.client_own", { id: c.own })
+    : c.builtin ? t("settings.client_builtin") : t("settings.client_none");
+  document.getElementById("client-reset").hidden = !c.own;
+  const err = document.getElementById("client-error");
+  err.hidden = !c.error;
+  err.textContent = c.error ? t("settings.google_failed", { error: c.error }) : "";
+  if (!c.builtin && !c.own) document.getElementById("client").open = true; // the only way to use Google
 }
 Events.On("accounts", ({ data }) => { accounts = data; renderAccounts(); });
 Events.Emit("accounts:get");
@@ -452,6 +483,13 @@ document.addEventListener("click", (ev) => {
   if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
   if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
   if (t.closest("#add-google")) return Events.Emit("account:add");
+  if (t.closest("#client-save")) {
+    const id = document.getElementById("client-id"), secret = document.getElementById("client-secret");
+    Events.Emit("client:set", { id: id.value, secret: secret.value });
+    secret.value = ""; // not kept in the page
+    return;
+  }
+  if (t.closest("#client-reset")) return Events.Emit("client:set", { id: "", secret: "" });
   const remove = t.closest("[data-remove]");
   if (remove) return Events.Emit("account:remove", remove.dataset.remove);
   const sw = t.closest(".switch");

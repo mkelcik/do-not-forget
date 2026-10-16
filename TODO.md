@@ -19,7 +19,7 @@
 - [x] RSVP cez `events.patch` (poslať celý zoznam účastníkov, zmeniť len seba); zatiaľ len jeden výskyt, nie celá séria
 - [x] ID udalostí s prefixom účtu (tá istá pozvánka v dvoch účtoch má rovnaké ID)
 - [ ] Overiť naživo s reálnym účtom (prihlásenie, obnova tokenu po hodine, RSVP, odpojenie)
-- [ ] Vlastné Client ID v nastaveniach (pre forky a tých, čo nechcú náš client)
+- [x] Vlastné Client ID v nastaveniach (pre forky a tých, čo nechcú náš client)
 
 ## 2. Funkčné nastavenia
 
