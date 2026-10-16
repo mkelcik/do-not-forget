@@ -97,10 +97,18 @@ func main() {
 	})
 
 	// Links from event data (and the UI) go to the OS only as http(s).
+	// A Zoom or Teams meeting opens in its desktop app when one is installed (and Settings allows
+	// it), else in the browser. The native link is built here from the checked https one.
 	openURL := func(link string) {
 		if !externalURL(link) {
 			log.Printf("not opening %q: only http(s) links", link)
 			return
+		}
+		mu.Lock()
+		nativeApps := cfg.NativeApps
+		mu.Unlock()
+		if native := nativeMeetingURL(link); nativeApps && native != "" && hasURLHandler(native) {
+			link = native
 		}
 		_ = app.Browser.OpenURL(link)
 	}

@@ -110,6 +110,8 @@
   "settings.tray_length_chars_one": "{{count}} character",
   "settings.tray_length_chars_other": "{{count}} characters",
   "settings.general": "General",
+  "settings.native_apps": "Open Zoom and Teams in their apps",
+  "settings.native_apps_desc": "When installed; otherwise in the browser",
   "settings.autostart": "Start at login",
   "settings.sync_every": "Sync every",
   "settings.version": "version {{version}}",
