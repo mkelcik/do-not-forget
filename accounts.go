@@ -55,10 +55,11 @@ func (m *accountManager) connect(email string, c oauthClient, tok *oauth2.Token,
 	if clientID == googleClientID {
 		clientID = "" // the built-in one, whatever it is in a later build
 	}
+	label, names := "", map[string]string(nil)
 	m.saveConfig(func(cfg *Config) {
 		for i, a := range cfg.Accounts {
 			if a.Email == email {
-				hidden = a.Hidden
+				hidden, label, names = a.Hidden, a.Label, a.Names
 				cfg.Accounts[i].ClientID = clientID
 				return
 			}
@@ -66,6 +67,8 @@ func (m *accountManager) connect(email string, c oauthClient, tok *oauth2.Token,
 		cfg.Accounts = append(cfg.Accounts, Account{Email: email, ClientID: clientID, Hidden: hidden})
 	})
 	g := newGoogleSource(email, c, tok, hidden)
+	g.setLabel(label)
+	g.setNames(names)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if i := slices.IndexFunc(*m.list, func(a *googleSource) bool { return a.email == email }); i >= 0 {
@@ -92,6 +95,8 @@ func (m *accountManager) dropClients(usable func(clientID string) bool) {
 			_ = g.close(false)
 			b := brokenGoogleSource(g.email, errClientGone)
 			b.clientID = g.clientID
+			b.label, _, _ = g.status()
+			b.names = g.calendarNames()
 			(*m.list)[i] = b
 		}
 	}

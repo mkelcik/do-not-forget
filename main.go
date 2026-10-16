@@ -149,14 +149,18 @@ func main() {
 		}
 		c, ok := clientFor(a.ClientID)
 		tok, err := loadToken(a.Email)
+		var g *googleSource
 		switch {
 		case !ok:
-			accounts = append(accounts, brokenGoogleSource(a.Email, errClientGone))
+			g = brokenGoogleSource(a.Email, errClientGone)
 		case err != nil:
-			accounts = append(accounts, brokenGoogleSource(a.Email, fmt.Errorf("keychain: %w", err)))
+			g = brokenGoogleSource(a.Email, fmt.Errorf("keychain: %w", err))
 		default:
-			accounts = append(accounts, newGoogleSource(a.Email, c, tok, a.Hidden))
+			g = newGoogleSource(a.Email, c, tok, a.Hidden)
 		}
+		g.label = a.Label
+		g.setNames(a.Names)
+		accounts = append(accounts, g)
 	}
 	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
 	clientErr := ""             // saving the own client failed, guarded by mu
@@ -225,8 +229,8 @@ func main() {
 		mu.Unlock()
 		list := make([]map[string]any, 0, len(gs))
 		for _, g := range gs {
-			cals, errText := g.status()
-			list = append(list, map[string]any{"email": g.email, "calendars": cals, "error": errText})
+			label, cals, errText := g.status()
+			list = append(list, map[string]any{"email": g.email, "label": label, "calendars": cals, "error": errText})
 		}
 		state["accounts"] = list
 		app.Event.Emit("accounts", state)
@@ -353,6 +357,69 @@ func main() {
 			}
 			refresh() // also re-emits the accounts
 		}()
+	})
+	// Naming an account ("Work", "Personal") shows that name instead of its email everywhere.
+	app.Event.On("account:label", func(ev *application.CustomEvent) {
+		var req struct{ Email, Label string }
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		label := strings.TrimSpace(req.Label)
+		if r := []rune(label); len(r) > 40 {
+			label = string(r[:40])
+		}
+		saveConfig(func(c *Config) {
+			for i, a := range c.Accounts {
+				if a.Email == req.Email {
+					c.Accounts[i].Label = label
+				}
+			}
+		})
+		mu.Lock()
+		for _, g := range accounts {
+			if g.email == req.Email {
+				g.setLabel(label)
+			}
+		}
+		mu.Unlock()
+		go refresh()
+	})
+	// Naming a calendar (a shared one Google calls by its owner's email, say), only in this app.
+	app.Event.On("calendar:name", func(ev *application.CustomEvent) {
+		var req struct{ Email, ID, Name string }
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		name := strings.TrimSpace(req.Name)
+		if r := []rune(name); len(r) > 40 {
+			name = string(r[:40])
+		}
+		var names map[string]string
+		saveConfig(func(c *Config) {
+			for i, a := range c.Accounts {
+				if a.Email != req.Email {
+					continue
+				}
+				if a.Names == nil {
+					a.Names = map[string]string{}
+				}
+				if name == "" {
+					delete(a.Names, req.ID)
+				} else {
+					a.Names[req.ID] = name
+				}
+				c.Accounts[i].Names = a.Names
+				names = maps.Clone(a.Names) // the config's map is only touched under saveConfig's lock
+			}
+		})
+		mu.Lock()
+		for _, g := range accounts {
+			if g.email == req.Email {
+				g.setNames(names)
+			}
+		}
+		mu.Unlock()
+		go refresh()
 	})
 	app.Event.On("calendar:toggle", func(ev *application.CustomEvent) {
 		var req struct {

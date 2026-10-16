@@ -171,7 +171,7 @@ func TestDisconnectReportsKeychainFailure(t *testing.T) {
 	if err := g.close(true); err == nil {
 		t.Fatal("close succeeded with a failing keychain")
 	}
-	if _, errText := g.status(); !strings.Contains(errText, "locked") {
+	if _, _, errText := g.status(); !strings.Contains(errText, "locked") {
 		t.Errorf("status error %q", errText)
 	}
 }
@@ -242,5 +242,51 @@ func TestWithAuthUser(t *testing.T) {
 		if got := withAuthUser(c.in, "me@x.sk"); got != c.want {
 			t.Errorf("withAuthUser(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// A named account shows its name instead of the email Google gives the primary calendar;
+// its other calendars keep their own names.
+func TestAccountLabel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/users/me/calendarList":
+			_, _ = io.WriteString(w, `{"items": [
+				{"id": "me@x.sk", "summary": "me@x.sk", "primary": true, "backgroundColor": "#0a84ff"},
+				{"id": "family@group", "summary": "Family", "backgroundColor": "#30d158"}]}`)
+		case strings.HasSuffix(r.URL.Path, "/events"):
+			_, _ = io.WriteString(w, `{"items": [{"id": "e", "summary": "Lunch",
+				"start": {"dateTime": "2026-10-16T12:00:00Z"}, "end": {"dateTime": "2026-10-16T13:00:00Z"}}]}`)
+		}
+	}))
+	defer srv.Close()
+	old := googleAPI
+	googleAPI = srv.URL
+	defer func() { googleAPI = old }()
+
+	g := brokenGoogleSource("me@x.sk", nil)
+	g.client = srv.Client()
+	g.setLabel("Work")
+	evs, err := g.Events(context.Background(), time.Now(), time.Now().Add(time.Hour))
+	if err != nil || len(evs) != 2 {
+		t.Fatalf("%d events, %v", len(evs), err)
+	}
+	names := map[string]bool{evs[0].Calendar: true, evs[1].Calendar: true}
+	if !names["Work"] || !names["Family"] {
+		t.Errorf("calendar names %v, want Work and Family", names)
+	}
+	if label, cals, _ := g.status(); label != "Work" || cals[0].Name != "Work" {
+		t.Errorf("status: %q %+v", label, cals)
+	}
+
+	// The user's own calendar names win over both, and Default keeps what they replace.
+	g.setNames(map[string]string{"family@group": "Janka", "me@x.sk": "Me"})
+	evs, _ = g.Events(context.Background(), time.Now(), time.Now().Add(time.Hour))
+	names = map[string]bool{evs[0].Calendar: true, evs[1].Calendar: true}
+	if !names["Me"] || !names["Janka"] {
+		t.Errorf("calendar names %v, want Me and Janka", names)
+	}
+	if _, cals, _ := g.status(); cals[1].Name != "Janka" || cals[1].Default != "Family" || cals[0].Default != "Work" {
+		t.Errorf("calendars %+v", cals)
 	}
 }

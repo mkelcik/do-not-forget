@@ -5,10 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-16
+
 ### Added
 
 - Homebrew: `brew install --cask mkelcik/tap/do-not-forget`; releases update the cask.
 - macOS app icon (Dock, Finder, Spotlight, Launchpad).
+- Name your accounts ("Work", "Personal") and calendars (a shared one Google calls by its
+  owner's email): the names replace the emails everywhere.
 
 ## [0.8.0] - 2026-10-16
 
@@ -38,5 +42,6 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/mkelcik/do-not-forget/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/mkelcik/do-not-forget/releases/tag/v0.8.0

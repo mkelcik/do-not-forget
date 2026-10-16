@@ -35,6 +35,12 @@ type Config struct {
 // Account is a connected Google account.
 type Account struct {
 	Email string `json:"email"`
+	// Label is the user's name for the account ("Work", "Personal"); it replaces the email that
+	// Google uses as the primary calendar's name. Empty shows the email.
+	Label string `json:"label,omitempty"`
+	// Names are the user's names for calendars, by calendar ID (a shared calendar Google names
+	// after its owner's email, say). They win over the label and Google's names.
+	Names map[string]string `json:"names,omitempty"`
 	// ClientID is the OAuth client the account signed in with; empty means the built-in one.
 	ClientID string `json:"clientId,omitempty"`
 	// Hidden lists the IDs of calendars unticked in Settings; new calendars show up ticked.

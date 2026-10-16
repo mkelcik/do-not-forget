@@ -98,7 +98,7 @@ func TestOwnClientAccounts(t *testing.T) {
 
 	m.dropClients(func(id string) bool { return id == googleClientID }) // own client removed
 	work, me := (*m.list)[0], (*m.list)[1]
-	if _, errText := work.status(); work.client != nil || errText != errClientGone.Error() {
+	if _, _, errText := work.status(); work.client != nil || errText != errClientGone.Error() {
 		t.Errorf("account on the removed client: client %v, error %q", work.client, errText)
 	}
 	if me.client == nil {
@@ -119,5 +119,18 @@ func TestValidClientID(t *testing.T) {
 		if validClientID(id) != want {
 			t.Errorf("validClientID(%q) != %v", id, want)
 		}
+	}
+}
+
+// Reconnecting an account keeps the name the user gave it.
+func TestReconnectKeepsLabel(t *testing.T) {
+	m, cfg := testManager(t)
+	_ = m.connect("me@x.sk", builtinClient(), &oauth2.Token{AccessToken: "a"}, nil)
+	cfg.Accounts[0].Label = "Personal"
+	cfg.Accounts[0].Names = map[string]string{"wife@x.sk": "Janka"}
+	_ = m.connect("me@x.sk", builtinClient(), &oauth2.Token{AccessToken: "b"}, nil)
+	g := (*m.list)[0]
+	if label, _, _ := g.status(); label != "Personal" || g.calendarNames()["wife@x.sk"] != "Janka" {
+		t.Errorf("after reconnect: label %q, names %v", label, g.calendarNames())
 	}
 }

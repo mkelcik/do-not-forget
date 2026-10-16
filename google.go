@@ -9,6 +9,7 @@ import (
 	"html"
 	"io"
 	"log"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -274,18 +275,21 @@ type googleSource struct {
 	stop     context.CancelFunc
 
 	mu        sync.Mutex
-	hidden    map[string]bool // calendar IDs unticked in Settings
-	calendars []Calendar      // from the last fetch, for Settings
-	err       error           // last fetch error, for Settings
+	label     string            // the user's name for the account, shown for the primary calendar
+	names     map[string]string // the user's names for calendars, by ID
+	hidden    map[string]bool   // calendar IDs unticked in Settings
+	calendars []Calendar        // from the last fetch, for Settings
+	err       error             // last fetch error, for Settings
 	closed    bool
 }
 
 // Calendar is one of an account's calendars as Settings shows it.
 type Calendar struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	On    bool   `json:"on"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`    // as shown: the user's name if set, else Default
+	Default string `json:"default"` // without the user's name: the account label or Google's
+	Color   string `json:"color"`
+	On      bool   `json:"on"`
 }
 
 func newGoogleSource(email string, c oauthClient, tok *oauth2.Token, hidden []string) *googleSource {
@@ -341,6 +345,25 @@ func (g *googleSource) bound(ctx context.Context) (context.Context, context.Canc
 	return ctx, func() { stop(); cancel() }
 }
 
+func (g *googleSource) setLabel(label string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.label = label
+}
+
+// setNames replaces the user's calendar names with a copy, so the config's map stays its own.
+func (g *googleSource) setNames(names map[string]string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.names = maps.Clone(names)
+}
+
+func (g *googleSource) calendarNames() map[string]string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return maps.Clone(g.names)
+}
+
 func (g *googleSource) setHidden(id string, hidden bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -348,13 +371,14 @@ func (g *googleSource) setHidden(id string, hidden bool) {
 }
 
 // status is the account as Settings shows it.
-func (g *googleSource) status() (cals []Calendar, errText string) {
+func (g *googleSource) status() (label string, cals []Calendar, errText string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	label = g.label
 	if g.err != nil {
 		errText = g.err.Error()
 	}
-	return append([]Calendar{}, g.calendars...), errText
+	return label, append([]Calendar{}, g.calendars...), errText
 }
 
 // do calls the Calendar API and decodes the JSON answer into out.
@@ -483,7 +507,14 @@ func (g *googleSource) events(ctx context.Context, from, to time.Time) ([]Event,
 		if name == "" {
 			name = c.Summary
 		}
-		cals = append(cals, Calendar{ID: c.ID, Name: name, Color: c.BackgroundColor, On: !g.hidden[c.ID]})
+		if c.Primary && g.label != "" { // Google names the primary calendar after the email
+			name = g.label
+		}
+		shown := name
+		if own := g.names[c.ID]; own != "" {
+			shown = own
+		}
+		cals = append(cals, Calendar{ID: c.ID, Name: shown, Default: name, Color: c.BackgroundColor, On: !g.hidden[c.ID]})
 	}
 	g.calendars = cals
 	g.mu.Unlock()

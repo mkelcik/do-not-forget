@@ -139,12 +139,12 @@ body.settings-open #settings { display: flex; }
   border: 1px solid var(--line); border-radius: 7px; padding: 4px 26px 4px 10px; }
 .opt select:hover { border-color: var(--muted); }
 .opt select:focus { outline: none; border-color: var(--accent); }
-.cal input { appearance: none; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--muted);
+.cal input[type=checkbox] { appearance: none; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--muted);
   display: grid; place-items: center; cursor: pointer; flex: none; }
-.cal input:focus-visible, .switch:focus-visible, button:focus-visible, .opt select:focus-visible {
+.cal input[type=checkbox]:focus-visible, .switch:focus-visible, button:focus-visible, .opt select:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px; }
-.cal input:checked { background: var(--accent); border-color: var(--accent); }
-.cal input:checked::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
+.cal input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
+.cal input[type=checkbox]:checked::after { content: ""; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0;
   transform: translateY(-1px) rotate(45deg); }
 .switch { width: 32px; height: 18px; border-radius: 99px; background: var(--line); position: relative; flex: none; transition: background .15s; }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
@@ -164,13 +164,24 @@ body.settings-open #settings { display: flex; }
 .link-btn.danger { color: var(--danger); }
 .link-btn:hover { background: var(--line); }
 .cal { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 48px; font-size: 12px; }
-.cal .name { flex: 1; }
 .cal .dot { width: 10px; height: 10px; }
 .add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
 .providers { display: none; padding: 4px 8px 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
 .providers.show { display: grid; }
 #accounts .group { margin-bottom: 8px; }
 .account-head .who small.error, .add-status.error { color: var(--danger); }
+.acct-label { font: inherit; font-weight: 600; color: var(--text); background: transparent; width: 100%;
+  border: 1px solid transparent; border-radius: 6px; padding: 1px 5px; margin-left: -6px; }
+.acct-label::placeholder { color: var(--muted); font-weight: 400; }
+.acct-label:hover { border-color: var(--line); }
+.acct-label:focus { outline: none; border-color: var(--accent); }
+/* The placeholder is the calendar's current name, so it reads as normal text until renamed. */
+.cal-name { flex: 1; min-width: 0; font: inherit; font-size: 12px; color: var(--text); background: transparent;
+  border: 1px solid transparent; border-radius: 6px; padding: 1px 5px; }
+.cal-name::placeholder { color: var(--text); opacity: 1; }
+.cal-name:hover { border-color: var(--line); }
+.cal-name:focus { outline: none; border-color: var(--accent); }
+.cal-name:focus::placeholder { color: var(--muted); }
 .add-status { padding: 0 12px 10px; font-size: 12px; color: var(--muted); }
 .client { margin-top: 8px; }
 .client summary { padding: 10px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
@@ -411,15 +422,22 @@ function detail(e) {
 // Settings › Accounts, from the backend's "accounts" event.
 let accounts = { accounts: [], google: false, adding: false, error: "", removing: [] };
 function renderAccounts() {
+  const typing = document.activeElement?.classList;
+  if (typing?.contains("acct-label") || typing?.contains("cal-name")) return; // don't wipe a name being typed
   const removing = new Set(accounts.removing || []);
   document.getElementById("accounts").innerHTML = accounts.accounts.map((a) => `<div class="group">
       <div class="account-head"><span class="logo" style="color:#4285f4">G</span>
-        <div class="who">${esc(a.email)}${removing.has(a.email) ? `<small>${t("settings.disconnecting")}</small>`
+        <div class="who"><input class="acct-label" data-email="${esc(a.email)}" value="${esc(a.label || "")}"
+            placeholder="${esc(t("settings.account_name"))}" title="${esc(t("settings.account_rename"))}" maxlength="40">
+          <small>${esc(a.email)}</small>${removing.has(a.email) ? `<small>${t("settings.disconnecting")}</small>`
           : a.error ? `<small class="error">${t("settings.account_error", { error: esc(a.error) })}</small>`
           : synced ? `<small>${t("settings.synced", { provider: "Google", ago: ago(synced) })}</small>` : ""}</div>
         <button class="link-btn danger" data-remove="${esc(a.email)}" ${removing.has(a.email) ? "disabled" : ""}>${t("settings.disconnect")}</button></div>
-      ${a.calendars.map((c) => `<label class="cal"><input type="checkbox" data-email="${esc(a.email)}" data-cal="${esc(c.id)}" ${c.on ? "checked" : ""}>
-        <span class="dot" style="background:${esc(c.color)}"></span><span class="name">${esc(c.name)}</span></label>`).join("")}
+      ${a.calendars.map((c) => `<div class="cal"><input type="checkbox" data-email="${esc(a.email)}" data-cal="${esc(c.id)}"
+          aria-label="${esc(c.name)}" ${c.on ? "checked" : ""}>
+        <span class="dot" style="background:${esc(c.color)}"></span>
+        <input class="cal-name" data-email="${esc(a.email)}" data-id="${esc(c.id)}" value="${c.name !== c.default ? esc(c.name) : ""}"
+          placeholder="${esc(c.default)}" title="${esc(t("settings.calendar_rename"))}" maxlength="40"></div>`).join("")}
     </div>`).join("");
   // The backend refuses too; this just doesn't offer it while a disconnect is finishing.
   document.getElementById("add-google").disabled = !accounts.google || accounts.adding || removing.size > 0;
@@ -441,8 +459,16 @@ function renderAccounts() {
   if (!c.builtin && !c.own) document.getElementById("client").open = true; // the only way to use Google
 }
 Events.On("accounts", ({ data }) => { accounts = data; renderAccounts(); });
+document.getElementById("accounts").addEventListener("keydown", (ev) => {
+  const cl = ev.target.classList;
+  if (ev.key === "Enter" && (cl.contains("acct-label") || cl.contains("cal-name"))) ev.target.blur(); // commits via "change"
+});
 Events.Emit("accounts:get");
 document.getElementById("accounts").addEventListener("change", (ev) => {
+  const name = ev.target.closest("input.acct-label");
+  if (name) return Events.Emit("account:label", { email: name.dataset.email, label: name.value });
+  const calName = ev.target.closest("input.cal-name");
+  if (calName) return Events.Emit("calendar:name", { email: calName.dataset.email, id: calName.dataset.id, name: calName.value });
   const box = ev.target.closest("input[data-cal]");
   if (box) Events.Emit("calendar:toggle", { email: box.dataset.email, id: box.dataset.cal, on: box.checked });
 });
