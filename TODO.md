@@ -4,11 +4,11 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Google
 
-- [ ] Google verification (app is In production; `donotforget.dev` is verified in Search Console
-      since 2026-10-17 09:30): from 2026-10-18 09:30 point branding at it (home page
-      `https://donotforget.dev/`, privacy policy `https://donotforget.dev/privacy.html`,
-      authorised domain `donotforget.dev`), re-request branding verification, then submit data
-      access with the scope justification and a demo video for `calendar.events`
+- [ ] Google data access verification (branding verified 2026-10-17 on `donotforget.dev`):
+      add both scopes under Data Access, write the justification (`calendar.events`: RSVP needs
+      write, shared/subscribed calendars rule out `calendar.events.owned`), record an unlisted
+      YouTube demo (English UI, client ID in the address bar, consent screen, calendar choice,
+      events, reminder, RSVP visible in Google Calendar, disconnect) and submit
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
 - [ ] RSVP for the whole series, not just one occurrence
 
