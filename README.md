@@ -6,7 +6,7 @@
 
 A tray app for Linux, macOS and Windows that keeps your next meeting one glance away,
 in the spirit of [MeetingBar](https://github.com/leits/MeetingBar).
-Website: <https://mkelcik.github.io/do-not-forget/>
+Website: <https://donotforget.dev/>
 
 <img src="docs/screenshot.png" width="360" alt="The agenda with the next meeting, Meet, Zoom and Teams links, an unanswered invitation and a conflict">
 <img src="docs/menubar.png" width="262" alt="The macOS menu bar: “Design review… · in 6 min”">
@@ -55,7 +55,7 @@ answer your events (`calendar.events`) and to list your calendars
 (`calendar.calendarlist.readonly`). Tokens are stored only in the system keychain (macOS
 Keychain, Secret Service on Linux, Windows Credential Manager), never in a file;
 **Disconnect** revokes the access at Google and deletes them. The app has no servers and no
-telemetry; see the [privacy policy](https://mkelcik.github.io/do-not-forget/privacy.html).
+telemetry; see the [privacy policy](https://donotforget.dev/privacy.html).
 
 ### Your own Google client ID
 

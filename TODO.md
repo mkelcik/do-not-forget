@@ -4,10 +4,10 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Google
 
-- [ ] Google verification (app is In production, `mkelcik.github.io` verified in Search
-      Console): re-request branding verification, then submit data access with the scope
-      justification and a demo video for `calendar.events`. A custom domain via `docs/CNAME` if
-      `github.io` isn't accepted
+- [ ] Google verification (app is In production): verify `donotforget.dev` as a Domain
+      property in Search Console, point branding (home page, privacy policy, authorised domain)
+      at it, re-request branding verification, then submit data access with the scope
+      justification and a demo video for `calendar.events`
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
 - [ ] RSVP for the whole series, not just one occurrence
 

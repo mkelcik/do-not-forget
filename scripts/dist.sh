@@ -40,7 +40,7 @@ Architecture: $GOARCH
 Maintainer: Michal Kelčík <mkelcik@gmail.com>
 Section: utils
 Priority: optional
-Homepage: https://mkelcik.github.io/do-not-forget/
+Homepage: https://donotforget.dev/
 Description: Meeting reminders in the system tray
  Shows upcoming calendar events, reminders and one-click meeting links.
 CONTROL
