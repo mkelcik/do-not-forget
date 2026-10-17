@@ -1,6 +1,6 @@
 # Privacy Policy
 
-The privacy policy is published at <https://mkelcik.github.io/do-not-forget/privacy.html>;
+The privacy policy is published at <https://donotforget.dev/privacy.html>;
 its source is [docs/privacy.html](docs/privacy.html).
 
 In short: the app runs on your computer, has no servers and no telemetry, keeps sign-in tokens
