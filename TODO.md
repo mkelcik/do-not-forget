@@ -4,10 +4,11 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Google
 
-- [ ] Google verification (app is In production): verify `donotforget.dev` as a Domain
-      property in Search Console, point branding (home page, privacy policy, authorised domain)
-      at it, re-request branding verification, then submit data access with the scope
-      justification and a demo video for `calendar.events`
+- [ ] Google verification (app is In production; `donotforget.dev` is verified in Search Console
+      since 2026-10-17 09:30): from 2026-10-18 09:30 point branding at it (home page
+      `https://donotforget.dev/`, privacy policy `https://donotforget.dev/privacy.html`,
+      authorised domain `donotforget.dev`), re-request branding verification, then submit data
+      access with the scope justification and a demo video for `calendar.events`
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
 - [ ] RSVP for the whole series, not just one occurrence
 
@@ -24,7 +25,7 @@ What's left, roughly in the order we want to do it within each section.
 
 - [ ] More providers: Microsoft 365 / Outlook, iCloud, CalDAV / iCal
 - [ ] macOS notarisation (Apple Developer account), Windows code signing
-- [ ] Packages: `.deb`, AppImage, Flathub, AUR, winget (Homebrew: `mkelcik/homebrew-tap`)
+- [ ] Packages: AppImage, Flathub, AUR, winget (done: Homebrew `mkelcik/homebrew-tap`, `.deb`)
 
 ## Technical debt
 
