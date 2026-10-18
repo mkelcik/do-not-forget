@@ -4,11 +4,6 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Google
 
-- [ ] Google data access verification (branding verified 2026-10-17 on `donotforget.dev`):
-      add both scopes under Data Access, write the justification (`calendar.events`: RSVP needs
-      write, shared/subscribed calendars rule out `calendar.events.owned`), record an unlisted
-      YouTube demo (English UI, client ID in the address bar, consent screen, calendar choice,
-      events, reminder, RSVP visible in Google Calendar, disconnect) and submit
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
 - [ ] RSVP for the whole series, not just one occurrence
 
