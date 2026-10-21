@@ -4,11 +4,6 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Google
 
-- [ ] Google verification (app is In production; `donotforget.dev` is verified in Search Console
-      since 2026-10-17 09:30): from 2026-10-18 09:30 point branding at it (home page
-      `https://donotforget.dev/`, privacy policy `https://donotforget.dev/privacy.html`,
-      authorised domain `donotforget.dev`), re-request branding verification, then submit data
-      access with the scope justification and a demo video for `calendar.events`
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
 - [ ] RSVP for the whole series, not just one occurrence
 
@@ -19,7 +14,6 @@ What's left, roughly in the order we want to do it within each section.
 ## Releases
 
 - [ ] Try on real Windows and on Linux with Google (tray, notifications, alert, updater, keychain)
-- [ ] Retake the website screenshot (`make showcase`): the current one still wraps 12-hour times
 
 ## Later
 
