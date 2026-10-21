@@ -78,7 +78,7 @@ Accounts remember the client they signed in with; after switching clients, conne
 
 ## Development
 
-Requirements: Go 1.27.2+, Make, and on Linux `libgtk-4-dev libwebkitgtk-6.0-dev`.
+Requirements: Go 1.27.3+, Make, and on Linux `libgtk-4-dev libwebkitgtk-6.0-dev`.
 
 ```bash
 make tools   # golangci-lint, govulncheck (re-run after upgrading Go)
