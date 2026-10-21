@@ -26,6 +26,8 @@ h2 { font-size: 21px; margin: 36px 0 8px; }
 .menubar { margin: 28px 0 0; }
 .menubar img { display: block; max-width: 100%; height: auto; border-radius: 8px; }
 .menubar figcaption { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.alert { margin: 16px 0 0; }
+.alert img { display: block; width: 100%; height: auto; border-radius: 14px; box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
 @media (max-width: 760px) {
   .hero { grid-template-columns: 1fr; gap: 0; }
   .hero .shot { max-width: 360px; justify-self: center; }

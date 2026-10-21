@@ -8,8 +8,9 @@ A tray app for Linux, macOS and Windows that keeps your next meeting one glance 
 in the spirit of [MeetingBar](https://github.com/leits/MeetingBar).
 Website: <https://donotforget.dev/>
 
-<img src="docs/screenshot.png" width="360" alt="The agenda with the next meeting, Meet, Zoom and Teams links, an unanswered invitation and a conflict">
-<img src="docs/menubar.png" width="262" alt="The macOS menu bar: “Design review… · in 6 min”">
+<img src="docs/screenshot.png" width="360" alt="The agenda with the meeting in progress, Meet, Zoom and Teams links, unanswered invitations and a declined event">
+<img src="docs/menubar.png" width="293" alt="The macOS menu bar: “Design review… · in progress until 22:15”">
+<img src="docs/alert.png" width="700" alt="The meeting-start alert: title, time, room, organizer, a Join via Meet button and a panel with RSVP, description and attendees">
 
 - **Next meeting in the tray**: hover for title, calendar and countdown; click for the agenda.
 - **Google Calendar**, several accounts at once: today, tomorrow and the next 7 days merged into one list,
@@ -77,7 +78,7 @@ Accounts remember the client they signed in with; after switching clients, conne
 
 ## Development
 
-Requirements: Go 1.27.2+, Make, and on Linux `libgtk-4-dev libwebkitgtk-6.0-dev`.
+Requirements: Go 1.27.3+, Make, and on Linux `libgtk-4-dev libwebkitgtk-6.0-dev`.
 
 ```bash
 make tools   # golangci-lint, govulncheck (re-run after upgrading Go)
