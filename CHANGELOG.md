@@ -7,8 +7,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Answer a recurring meeting for the whole series: tick "All events in the series" under
-  Yes / Maybe / No, in the agenda and in the meeting-start alert.
+- Answer a recurring meeting for the whole series: after Yes / Maybe / No, pick "This event"
+  or "All events", as in Google Calendar. In the agenda and in the meeting-start alert.
 
 ## [0.8.4] - 2026-10-16
 
