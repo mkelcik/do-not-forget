@@ -8,7 +8,7 @@
     { "calendar": "Personal", "title": "Mia's birthday 🎂", "allDay": true },
     { "calendar": "Work", "title": "Company all-hands week", "allDay": true },
 
-    { "calendar": "Product team", "title": "Daily standup", "at": "-3h", "dur": "15m", "response": "yes",
+    { "calendar": "Product team", "title": "Daily standup", "seriesId": "standup", "at": "-3h", "dur": "15m", "response": "yes",
       "link": "https://meet.google.com/dai-lyst-ndp",
       "attendees": [{ "name": "Sam Taylor", "status": "yes", "self": true }, { "name": "Priya Shah", "status": "yes" }, { "name": "Leo Martin", "status": "yes" }] },
     { "calendar": "Work", "title": "Code review: checkout flow", "at": "-75m", "dur": "45m", "response": "yes",
@@ -20,7 +20,7 @@
       "description": "Walkthrough of the new onboarding screens before they go to usability testing.\n\nAgenda\n1. Sign-up and first calendar\n2. Empty states\n3. Open questions\n\nFigma: https://www.figma.com/file/onboarding\nNotes: https://docs.example.com/design-review",
       "attendees": [{ "name": "Sam Taylor", "status": "yes", "self": true }, { "name": "Priya Shah", "status": "yes" }, { "name": "Leo Martin", "status": "yes" },
                     { "name": "Emma Novak", "status": "maybe" }, { "name": "Daniel Kim", "status": "no" }, { "name": "Olivia Brown", "status": "pending" }] },
-    { "calendar": "Product team", "title": "1:1 with Priya", "at": "+90m", "dur": "30m", "response": "pending",
+    { "calendar": "Product team", "title": "1:1 with Priya", "seriesId": "priya-1on1", "at": "+90m", "dur": "30m", "response": "pending",
       "link": "https://zoom.us/j/4815162342", "organizer": "Priya Shah",
       "attendees": [{ "name": "Sam Taylor", "status": "pending", "self": true }, { "name": "Priya Shah", "status": "yes" }] },
     { "calendar": "Work", "title": "Quarterly planning", "at": "+150m", "dur": "1h", "response": "maybe",
@@ -31,7 +31,7 @@
       "link": "https://zoom.us/j/2718281828", "attendees": [{ "name": "Sam Taylor", "status": "no", "self": true }, { "name": "Vendor Inc.", "status": "yes" }] },
     { "calendar": "Personal", "title": "Running club", "at": "+6h", "dur": "1h", "location": "City park" },
 
-    { "calendar": "Product team", "title": "Sprint retro", "day": 1, "at": "10:00", "dur": "1h", "response": "yes",
+    { "calendar": "Product team", "title": "Sprint retro", "seriesId": "retro", "day": 1, "at": "10:00", "dur": "1h", "response": "yes",
       "link": "https://meet.google.com/spr-intr-tro" },
     { "calendar": "Work", "title": "Customer demo", "day": 1, "at": "14:00", "dur": "1h", "response": "pending",
       "link": "https://teams.microsoft.com/l/meetup-join/customer-demo", "organizer": "Emma Novak" },

@@ -56,6 +56,8 @@ h1 { font-size: clamp(34px, 5vw, 64px); font-weight: 700; line-height: 1.08; mar
 .rsvp .on[data-respond=yes] { background: var(--ok); }
 .rsvp .on[data-respond=maybe] { background: var(--warn); }
 .rsvp .on[data-respond=no] { background: var(--no); }
+.series { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); cursor: pointer; width: fit-content; }
+.series input { margin: 0; accent-color: var(--c); }
 .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
 .person { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
 .person b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px;
@@ -96,7 +98,8 @@ function render() {
 
   const panel = [
     e.response && `<div><div class="k">${t("rsvp.question")}</div><div class="rsvp">${["yes", "maybe", "no"]
-      .map((r) => `<button data-respond="${r}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div></div>`,
+      .map((r) => `<button data-respond="${r}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>${e.seriesId
+      ? `<label class="series"><input type="checkbox" data-series ${series ? "checked" : ""}>${t("rsvp.series")}</label>` : ""}</div>`,
     e.description && `<div><div class="k">${t("detail.description")}</div><div class="desc">${linkify(e.description)}</div></div>`,
     people.length && `<div><div class="k">${t("detail.attendees")} · ${people.length}</div><div class="people">${people.map((p) =>
       `<div class="person ${esc(p.status)}" title="${statuses.includes(p.status) ? t("status." + p.status) : ""}"><b>${esc((p.name || "?").charAt(0).toUpperCase())}</b>
@@ -125,8 +128,11 @@ function render() {
     ${panel ? `<aside class="panel">${panel}</aside>` : ""}`;
 }
 
+let series = false; // answer for the whole recurring series, not just this occurrence
+document.addEventListener("change", (ev) => { if (ev.target.matches("[data-series]")) series = ev.target.checked; });
 Events.On("alert", ({ data }) => {
   events = (data ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  series = false;
   render();
 });
 document.addEventListener("click", (ev) => {
@@ -134,7 +140,7 @@ document.addEventListener("click", (ev) => {
   const ans = t.closest("[data-respond]");
   if (ans && events[0]) {
     events[0].response = ans.dataset.respond;
-    Events.Emit("respond", { id: events[0].id, response: ans.dataset.respond });
+    Events.Emit("respond", { id: events[0].id, response: ans.dataset.respond, series: series && Boolean(events[0].seriesId) });
     return render();
   }
   const link = t.closest("[data-url]");

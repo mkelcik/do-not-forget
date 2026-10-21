@@ -51,6 +51,32 @@ func TestDummySourceAndMerge(t *testing.T) {
 	}
 }
 
+// A series answer covers every occurrence; one answered on its own keeps that answer.
+func TestDummySeriesResponse(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "d.json")
+	os.WriteFile(path, []byte(`{"events":[
+		{"title":"1:1","seriesId":"s","at":"+1h","dur":"30m","response":"pending"},
+		{"title":"1:1","seriesId":"s","day":1,"at":"10:00","dur":"30m","response":"pending"},
+		{"title":"other","at":"+2h","dur":"30m","response":"pending"}]}`), 0o644)
+	base := time.Date(2026, 10, 15, 12, 0, 0, 0, time.Local)
+	src := &dummySource{path: path, base: base}
+	get := func() []Event {
+		evs, err := src.Events(context.Background(), base, base.AddDate(0, 0, 2))
+		if err != nil || len(evs) != 3 {
+			t.Fatalf("%d events, %v", len(evs), err)
+		}
+		return evs
+	}
+
+	evs := get()
+	src.Respond(context.Background(), evs[0].ID, "maybe")
+	src.Respond(context.Background(), evs[0].SeriesID, "yes")
+	evs = get()
+	if evs[0].Response != "maybe" || evs[1].Response != "yes" || evs[2].Response != "pending" {
+		t.Errorf("responses %q %q %q, want maybe yes pending", evs[0].Response, evs[1].Response, evs[2].Response)
+	}
+}
+
 // showcase.json feeds the website screenshots (make showcase); it must keep loading.
 func TestShowcaseLoads(t *testing.T) {
 	src := &dummySource{path: "showcase.json", base: time.Date(2026, 10, 16, 11, 0, 0, 0, time.Local)}

@@ -593,17 +593,18 @@ func (g *googleSource) events(ctx context.Context, from, to time.Time) ([]Event,
 }
 
 type gEvent struct {
-	ID          string `json:"id"`
-	Status      string `json:"status"`
-	EventType   string `json:"eventType"`
-	Summary     string `json:"summary"`
-	Location    string `json:"location"`
-	Description string `json:"description"`
-	HTMLLink    string `json:"htmlLink"`
-	HangoutLink string `json:"hangoutLink"`
-	Start       gTime  `json:"start"`
-	End         gTime  `json:"end"`
-	Organizer   struct {
+	ID               string `json:"id"`
+	RecurringEventID string `json:"recurringEventId"` // the series an instance belongs to
+	Status           string `json:"status"`
+	EventType        string `json:"eventType"`
+	Summary          string `json:"summary"`
+	Location         string `json:"location"`
+	Description      string `json:"description"`
+	HTMLLink         string `json:"htmlLink"`
+	HangoutLink      string `json:"hangoutLink"`
+	Start            gTime  `json:"start"`
+	End              gTime  `json:"end"`
+	Organizer        struct {
 		Email       string `json:"email"`
 		DisplayName string `json:"displayName"`
 		Self        bool   `json:"self"`
@@ -662,6 +663,9 @@ func (ge gEvent) event(account string, cal Calendar) (Event, bool) {
 		Description: htmlToText(ge.Description),
 		Organizer:   ge.Organizer.DisplayName,
 		CalendarURL: ge.HTMLLink,
+	}
+	if ge.RecurringEventID != "" {
+		e.SeriesID = googleEventID(account, cal.ID, ge.RecurringEventID)
 	}
 	if e.Title == "" {
 		e.Title = T("event.no_title")
@@ -793,7 +797,8 @@ func htmlToText(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// Respond sets my RSVP on this occurrence. attendees is replaced as a whole by a patch, so it's
+// Respond sets my RSVP on this occurrence, or on the whole series when id is a SeriesID: the
+// series' own event is read and patched, never an instance's guest list. attendees is replaced as a whole by a patch, so it's
 // read first and only my entry changes. sendUpdates=none: the organizer sees the answer in their
 // calendar, without an email.
 func (g *googleSource) Respond(ctx context.Context, id, response string) error {

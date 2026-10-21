@@ -78,7 +78,10 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .rsvp button.on[data-respond=yes] { background: var(--personal); color: #fff; }
 .rsvp button.on[data-respond=maybe] { background: var(--warn); color: #fff; }
 .rsvp button.on[data-respond=no] { background: var(--danger); color: #fff; }
-.hero .ask { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--warn); font-weight: 600; }
+.hero .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--warn); font-weight: 600; }
+.series { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--muted); cursor: pointer; width: fit-content; }
+.series input { margin: 0; accent-color: var(--accent); }
+.hero .ask .series { margin-top: 0; }
 .person.maybe b { background: var(--warn); color: #fff; }
 .conflict { margin: 4px 0; padding: 2px 0 2px; border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
@@ -310,8 +313,10 @@ const until = (d) => {
 };
 const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
 const visible = () => events.filter((e) => !hidden.has(e.calendar) && (i18n.settings.showDeclined || e.response !== "no"));
+const series = new Set(); // IDs of recurring events whose answer goes to the whole series
 const rsvp = (e) => `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
-  `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>`;
+  `<button data-respond="${r}" data-id="${esc(e.id)}" class="${e.response === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>` +
+  (e.seriesId ? `<label class="series"><input type="checkbox" data-series="${esc(e.id)}" ${series.has(e.id) ? "checked" : ""}>${t("rsvp.series")}</label>` : "");
 const agoMin = (m) => m < 1 ? t("ago.now") : t("ago.min", { m });
 const ago = (d) => agoMin(Math.round((Date.now() - d) / 60000));
 const initial = (n) => (n || "?").charAt(0).toUpperCase();
@@ -528,14 +533,20 @@ document.getElementById("language").addEventListener("change", (ev) => setLangua
 document.querySelectorAll("select[data-setting]").forEach((sel) => sel.addEventListener("change", () =>
   Events.Emit("settings:set", { key: sel.dataset.setting, value: Number(sel.value) })));
 onLanguage(() => { fillSettings(); render(); });
+document.addEventListener("change", (ev) => {
+  const box = ev.target.closest?.("[data-series]");
+  if (box) box.checked ? series.add(box.dataset.series) : series.delete(box.dataset.series);
+});
 
 document.addEventListener("click", (ev) => {
   const t = ev.target;
   const ans = t.closest("[data-respond]");
   if (ans) {
     const e = events.find((x) => x.id === ans.dataset.id);
-    if (e) e.response = ans.dataset.respond; // optimistic, the backend refresh confirms
-    Events.Emit("respond", { id: ans.dataset.id, response: ans.dataset.respond });
+    const all = Boolean(e?.seriesId) && series.has(e.id);
+    // Optimistic, the backend refresh confirms.
+    events.filter((x) => x === e || (all && x.seriesId === e.seriesId)).forEach((x) => { x.response = ans.dataset.respond; });
+    Events.Emit("respond", { id: ans.dataset.id, response: ans.dataset.respond, series: all });
     return render();
   }
   if (t.closest("#connect")) {

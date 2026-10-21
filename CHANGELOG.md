@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Answer a recurring meeting for the whole series: tick "All events in the series" under
+  Yes / Maybe / No, in the agenda and in the meeting-start alert.
+
 ## [0.8.4] - 2026-10-16
 
 ### Added

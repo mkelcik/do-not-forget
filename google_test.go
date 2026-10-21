@@ -18,7 +18,7 @@ import (
 func TestGoogleEventMapping(t *testing.T) {
 	var ge gEvent
 	_ = json.Unmarshal([]byte(`{
-		"id": "abc_20261016", "status": "confirmed", "summary": "Standup",
+		"id": "abc_20261016", "recurringEventId": "abc", "status": "confirmed", "summary": "Standup",
 		"htmlLink": "https://www.google.com/calendar/event?eid=x",
 		"start": {"dateTime": "2026-10-16T09:00:00+02:00"}, "end": {"dateTime": "2026-10-16T09:15:00+02:00"},
 		"location": "Room 1", "description": "Agenda<br>1. <b>news</b> &amp; plans",
@@ -36,6 +36,9 @@ func TestGoogleEventMapping(t *testing.T) {
 	}
 	if e.ID != "me@firma.sk|me@firma.sk|abc_20261016" || e.Calendar != "Práca" || e.Color != "#0a84ff" {
 		t.Errorf("id/calendar: %+v", e)
+	}
+	if e.SeriesID != "me@firma.sk|me@firma.sk|abc" {
+		t.Errorf("series: %q", e.SeriesID)
 	}
 	if want := time.Date(2026, 10, 16, 7, 0, 0, 0, time.UTC); !e.Start.Equal(want) || e.End.Sub(e.Start) != 15*time.Minute {
 		t.Errorf("times: %v – %v", e.Start, e.End)
@@ -59,7 +62,7 @@ func TestGoogleEventMapping(t *testing.T) {
 	if !e.AllDay || !e.Start.Equal(time.Date(2026, 10, 16, 0, 0, 0, 0, time.Local)) || e.Title != "(Bez názvu)" {
 		t.Errorf("all-day: %+v", e)
 	}
-	if e.Link != "https://firma.zoom.us/j/123?pwd=x" || e.Response != "" { // Zoom left alone
+	if e.Link != "https://firma.zoom.us/j/123?pwd=x" || e.Response != "" || e.SeriesID != "" { // Zoom left alone
 		t.Errorf("zoom link / no RSVP: %+v", e)
 	}
 
@@ -218,6 +221,43 @@ func TestGoogleRespond(t *testing.T) {
 	}
 	if err := g.Respond(context.Background(), "dummy-1", "yes"); err == nil {
 		t.Error("a non-Google ID must fail")
+	}
+}
+
+// A series answer reads and patches the series' own event with its own guest list, never the
+// occurrence's.
+func TestGoogleRespondSeries(t *testing.T) {
+	var patched map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/calendars/me@firma.sk/events/abc" {
+			t.Errorf("%s %s, want the series", r.Method, r.URL.Path)
+		}
+		switch r.Method {
+		case http.MethodGet:
+			_, _ = io.WriteString(w, `{"attendees": [
+				{"email": "me@firma.sk", "self": true, "responseStatus": "needsAction"},
+				{"email": "series-only@firma.sk", "responseStatus": "accepted"}]}`)
+		case http.MethodPatch:
+			_ = json.NewDecoder(r.Body).Decode(&patched)
+			_, _ = io.WriteString(w, `{}`)
+		}
+	}))
+	defer srv.Close()
+	old := googleAPI
+	googleAPI = srv.URL
+	defer func() { googleAPI = old }()
+
+	g := brokenGoogleSource("me@firma.sk", nil)
+	g.client = srv.Client()
+	e := Event{ID: googleEventID("me@firma.sk", "me@firma.sk", "abc_20261016"), SeriesID: googleEventID("me@firma.sk", "me@firma.sk", "abc")}
+	if err := g.Respond(context.Background(), e.SeriesID, "yes"); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := json.Marshal(patched)
+	for _, want := range []string{`"responseStatus":"accepted","self":true`, `series-only@firma.sk`} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("patch %s lacks %s", b, want)
+		}
 	}
 }
 

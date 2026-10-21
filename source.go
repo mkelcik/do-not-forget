@@ -26,6 +26,10 @@ type Event struct {
 	// Response is my RSVP: pending | yes | maybe | no; empty when there's nothing to answer
 	// (my own event, no guest list).
 	Response string `json:"response,omitempty"`
+	// SeriesID is the whole recurring series, in the same form as ID; empty for one-off events.
+	// Answering for the series sends it to Respond in place of ID. Occurrences the organizer
+	// changed on their own may keep their answer, as with "all events" in Google Calendar.
+	SeriesID string `json:"seriesId,omitempty"`
 
 	src Source // which source produced it, so RSVPs go back to the right account
 }

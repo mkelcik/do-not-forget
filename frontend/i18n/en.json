@@ -38,6 +38,7 @@
   "rsvp.yes": "Yes",
   "rsvp.maybe": "Maybe",
   "rsvp.no": "No",
+  "rsvp.series": "All events in the series",
   "status.yes": "accepted",
   "status.maybe": "maybe",
   "status.no": "declined",

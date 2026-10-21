@@ -473,15 +473,22 @@ func main() {
 		go refresh()
 	})
 	app.Event.On("respond", func(ev *application.CustomEvent) {
-		var req struct{ ID, Response string }
+		var req struct {
+			ID, Response string
+			Series       bool // the whole recurring series, not just this occurrence
+		}
 		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
 			return
 		}
 		mu.Lock()
 		var src Source
+		target := ""
 		for _, e := range events {
 			if e.ID == req.ID {
-				src = e.src
+				src, target = e.src, e.ID
+				if req.Series && e.SeriesID != "" {
+					target = e.SeriesID
+				}
 			}
 		}
 		mu.Unlock()
@@ -489,8 +496,8 @@ func main() {
 			return
 		}
 		go func() {
-			if err := src.Respond(context.Background(), req.ID, req.Response); err != nil {
-				log.Printf("respond %s: %v", req.ID, err)
+			if err := src.Respond(context.Background(), target, req.Response); err != nil {
+				log.Printf("respond %s: %v", target, err)
 			}
 			refresh()
 		}()

@@ -18,7 +18,7 @@ type dummySource struct {
 	base time.Time
 
 	mu        sync.Mutex
-	responses map[string]string // RSVPs made in the app, layered over the file
+	responses map[string]string // RSVPs made in the app by event or series ID, layered over the file
 }
 
 type dummyFile struct {
@@ -52,6 +52,10 @@ func (d *dummySource) Events(_ context.Context, from, to time.Time) ([]Event, er
 			e.CalendarURL = e.Start.Format("https://calendar.google.com/calendar/r/day/2006/1/2")
 		}
 		d.mu.Lock()
+		// Like Google: a series answer covers every occurrence, one answered on its own keeps that.
+		if r, ok := d.responses[e.SeriesID]; ok && e.SeriesID != "" {
+			e.Response = r
+		}
 		if r, ok := d.responses[e.ID]; ok {
 			e.Response = r
 		}
