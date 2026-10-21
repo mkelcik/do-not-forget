@@ -14,7 +14,6 @@ What's left, roughly in the order we want to do it within each section.
 ## Releases
 
 - [ ] Try on real Windows and on Linux with Google (tray, notifications, alert, updater, keychain)
-- [ ] Retake the website screenshot (`make showcase`): the current one still wraps 12-hour times
 
 ## Later
 
