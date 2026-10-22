@@ -5,6 +5,22 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-22
+
+### Added
+
+- `.rpm` packages for Fedora and openSUSE (x86-64 and ARM64), installed with
+  `sudo dnf install ./do-not-forget_<version>_<arch>.rpm` (or `sudo zypper install`).
+- The AUR package `do-not-forget-bin` for Arch Linux.
+- A Flatpak package for Flathub. It starts at login through the Background portal and leaves
+  updates to Flatpak. Each release now also carries the source with vendored Go modules, which
+  Flathub builds from.
+
+### Fixed
+
+- Settings › Menu bar options meant for macOS only no longer show on Linux and Windows.
+- A failed change to "Start at login" shows a translated message instead of the raw error.
+
 ## [0.9.0] - 2026-10-22
 
 ### Added
@@ -101,7 +117,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/mkelcik/do-not-forget/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/mkelcik/do-not-forget/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/mkelcik/do-not-forget/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/mkelcik/do-not-forget/compare/v0.8.2...v0.8.3
