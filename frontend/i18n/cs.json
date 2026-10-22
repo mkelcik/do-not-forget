@@ -121,6 +121,7 @@
   "settings.native_apps": "Otevírat Zoom a Teams v aplikaci",
   "settings.native_apps_desc": "Pokud je nainstalovaná, jinak v prohlížeči",
   "settings.autostart": "Spustit po přihlášení",
+  "settings.autostart_error": "Spouštění po přihlášení se nepodařilo změnit",
   "settings.sync_every": "Synchronizovat každých",
   "settings.version": "verze {{version}}",
   "settings.update": "Aktualizovat na {{version}}",

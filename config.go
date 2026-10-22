@@ -37,6 +37,9 @@ type Config struct {
 	Language string `json:"language"`
 	// MutedUntil silences reminders and alerts until then; zero means not muted.
 	MutedUntil time.Time `json:"mutedUntil"`
+	// FlatpakAutostart remembers start at login inside the Flatpak, where the Background portal
+	// sets it but can't be asked for it. Elsewhere the system's registration is the truth.
+	FlatpakAutostart bool `json:"flatpakAutostart"`
 	// TrayStyle is what the macOS menu bar shows for today's next meeting: "icon", "text" or
 	// "both" (icon + title and countdown). Other systems' trays only take an icon.
 	TrayStyle string `json:"trayStyle"`

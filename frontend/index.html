@@ -137,6 +137,7 @@ body.settings-open #settings { display: flex; }
 .group { background: var(--card); border-radius: 10px; border: 1px solid var(--line); }
 .group > * + * { border-top: 1px solid var(--line); }
 .opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; min-height: 38px; }
+.opt[hidden] { display: none; } /* display: flex would beat the hidden attribute */
 .opt small { display: block; color: var(--muted); font-size: 11px; }
 /* Own look for the closed select and checkboxes; WebKitGTK otherwise paints them in the GTK theme. */
 .opt select { appearance: none; font: inherit; font-size: 12px; color: var(--text); cursor: pointer;
@@ -284,7 +285,7 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
 
     <h2 data-i18n="settings.general"></h2>
     <div class="group">
-      <div class="opt"><span><span data-i18n="settings.native_apps"></span><small data-i18n="settings.native_apps_desc"></small></span><span class="switch" data-setting="nativeApps"></span></div>
+      <div class="opt" id="native-apps-opt"><span><span data-i18n="settings.native_apps"></span><small data-i18n="settings.native_apps_desc"></small></span><span class="switch" data-setting="nativeApps"></span></div>
       <div class="opt"><span><span data-i18n="settings.autostart"></span><small class="error" id="autostart-error" hidden></small></span><span class="switch" id="autostart"></span></div>
       <div class="opt"><span data-i18n="settings.sync_every"></span><select data-setting="syncMinutes" data-minutes="1,5,15"></select></div>
     </div>
@@ -526,6 +527,7 @@ function fillSettings() {
   upd.hidden = document.getElementById("update-br").hidden = !i18n.update;
   upd.textContent = i18n.update ? t("settings.update", { version: i18n.update }) : "";
   document.getElementById("open-settings").classList.toggle("badge", !!i18n.update);
+  document.getElementById("native-apps-opt").hidden = i18n.flatpak;
   document.getElementById("tray-style-opt").hidden = i18n.platform !== "darwin"; // other trays take no text
   document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b.dataset.style === i18n.trayStyle));
   document.getElementById("tray-length-opt").hidden = i18n.platform !== "darwin" || i18n.trayStyle === "icon";

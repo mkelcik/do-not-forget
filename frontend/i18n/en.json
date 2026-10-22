@@ -117,6 +117,7 @@
   "settings.native_apps": "Open Zoom and Teams in their apps",
   "settings.native_apps_desc": "When installed; otherwise in the browser",
   "settings.autostart": "Start at login",
+  "settings.autostart_error": "Couldn't change start at login",
   "settings.sync_every": "Sync every",
   "settings.version": "version {{version}}",
   "settings.update": "Update to {{version}}",
