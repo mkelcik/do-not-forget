@@ -120,6 +120,8 @@ func flatpakAutostart(on bool) error {
 			}
 			return nil
 		case <-timeout:
+			// Close the dialog, or a late approval would change autostart after we reported failure.
+			_ = conn.Object("org.freedesktop.portal.Desktop", path).Call("org.freedesktop.portal.Request.Close", 0).Err
 			return errors.New("background portal did not answer")
 		}
 	}
