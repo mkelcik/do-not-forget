@@ -27,7 +27,11 @@ static void skip_taskbar(void *win) {
 import "C"
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
+	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/godbus/dbus/v5"
@@ -65,5 +69,58 @@ func setTrayTooltip(tray *application.SystemTray, title, sub string) {
 	}
 	if conn, err := dbus.SessionBus(); err == nil {
 		_ = conn.Emit("/StatusNotifierItem", "org.kde.StatusNotifierItem.NewToolTip")
+	}
+}
+
+// flatpakAutostart asks the Background portal to add or remove the start-at-login entry: the
+// sandbox can't write ~/.config/autostart, and Wails' Autostart would write into the sandbox.
+func flatpakAutostart(on bool) error {
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		return err
+	}
+	// The reply arrives as a Response signal on a request path derived from our bus name and
+	// handle_token; subscribe before calling so it can't be missed.
+	token := fmt.Sprintf("autostart%d", time.Now().UnixNano())
+	sender := strings.ReplaceAll(strings.TrimPrefix(conn.Names()[0], ":"), ".", "_")
+	path := dbus.ObjectPath("/org/freedesktop/portal/desktop/request/" + sender + "/" + token)
+	match := []dbus.MatchOption{dbus.WithMatchObjectPath(path), dbus.WithMatchInterface("org.freedesktop.portal.Request"), dbus.WithMatchMember("Response")}
+	err = conn.AddMatchSignal(match...)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.RemoveMatchSignal(match...) }()
+	signals := make(chan *dbus.Signal, 8)
+	conn.Signal(signals)
+	defer conn.RemoveSignal(signals)
+
+	opts := map[string]dbus.Variant{
+		"handle_token": dbus.MakeVariant(token),
+		"autostart":    dbus.MakeVariant(on),
+		"commandline":  dbus.MakeVariant([]string{"do-not-forget"}),
+	}
+	desktop := conn.Object("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop")
+	err = desktop.Call("org.freedesktop.portal.Background.RequestBackground", 0, "", opts).Err
+	if err != nil {
+		return err
+	}
+	timeout := time.After(2 * time.Minute) // the portal may ask the user first
+	for {
+		select {
+		case s := <-signals:
+			if s.Path != path || len(s.Body) < 2 {
+				continue
+			}
+			if code, _ := s.Body[0].(uint32); code != 0 {
+				return fmt.Errorf("background portal refused (%d)", code)
+			}
+			results, _ := s.Body[1].(map[string]dbus.Variant)
+			if granted, _ := results["autostart"].Value().(bool); granted != on {
+				return errors.New("background portal did not change start at login")
+			}
+			return nil
+		case <-timeout:
+			return errors.New("background portal did not answer")
+		}
 	}
 }

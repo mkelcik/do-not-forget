@@ -30,9 +30,9 @@ const (
 // allowed) and is announced with a notification whose button downloads, verifies (SHA256SUMS
 // + Ed25519 signature, see signing.go) and restarts. The notification repeats every check
 // until updated, and waits out a mute. Dev builds never check, so `go run` can't get replaced
-// by a release binary.
+// by a release binary. Flatpak updates the Flatpak.
 func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool, available func(version string)) {
-	if version == "dev" {
+	if version == "dev" || flatpakID != "" {
 		return
 	}
 	gh, err := github.New(github.Config{Repository: repo, ChecksumAsset: "SHA256SUMS"})

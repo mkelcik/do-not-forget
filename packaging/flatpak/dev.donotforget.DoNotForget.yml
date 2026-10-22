@@ -1,0 +1,52 @@
+# Flathub manifest. The copy in github.com/flathub/dev.donotforget.DoNotForget has the app's
+# Google OAuth client filled in (a desktop client can't keep its secret; Google treats it as
+# public), and the Flathub bot bumps its source archive after each release.
+id: dev.donotforget.DoNotForget
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+command: do-not-forget
+rename-desktop-file: do-not-forget.desktop
+rename-icon: do-not-forget
+finish-args:
+  - --share=network
+  - --share=ipc
+  # The popup places itself next to the tray, which Wayland doesn't allow: the app uses X11.
+  - --socket=x11
+  - --device=dri
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # OAuth tokens live in the system keychain (Secret Service).
+  - --talk-name=org.freedesktop.secrets
+modules:
+  - name: do-not-forget
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/golang/bin
+      env:
+        GOFLAGS: -mod=vendor
+        GOTOOLCHAIN: local
+        GOCACHE: /run/build/do-not-forget/.gocache
+        GOOGLE_CLIENT_ID: ''
+        GOOGLE_CLIENT_SECRET: ''
+    build-commands:
+      - >-
+        go build -trimpath -tags production -o do-not-forget
+        -ldflags "-s -w -X main.version=$(cat VERSION)
+        -X main.googleClientID=$GOOGLE_CLIENT_ID -X main.googleClientSecret=$GOOGLE_CLIENT_SECRET" .
+      - install -Dm755 do-not-forget /app/bin/do-not-forget
+      - install -Dm644 packaging/linux/do-not-forget.desktop /app/share/applications/do-not-forget.desktop
+      - install -Dm644 docs/logo.svg /app/share/icons/hicolor/scalable/apps/do-not-forget.svg
+      - install -Dm644 packaging/flatpak/dev.donotforget.DoNotForget.metainfo.xml -t /app/share/metainfo
+    sources:
+      # Source with vendored Go modules (Flathub builds offline), from the GitHub release.
+      - type: archive
+        url: https://github.com/mkelcik/do-not-forget/releases/download/v0.9.0/do-not-forget-0.9.0-vendored.tar.gz
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/mkelcik/do-not-forget/releases/latest
+          version-query: .tag_name | sub("^v"; "")
+          url-query: .assets[] | select(.name == "do-not-forget-" + $version + "-vendored.tar.gz") | .browser_download_url
