@@ -473,15 +473,22 @@ func main() {
 		go refresh()
 	})
 	app.Event.On("respond", func(ev *application.CustomEvent) {
-		var req struct{ ID, Response string }
+		var req struct {
+			ID, Response string
+			Series       bool // the whole recurring series, not just this occurrence
+		}
 		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
 			return
 		}
 		mu.Lock()
 		var src Source
+		series := ""
 		for _, e := range events {
 			if e.ID == req.ID {
 				src = e.src
+				if req.Series {
+					series = e.SeriesID
+				}
 			}
 		}
 		mu.Unlock()
@@ -489,8 +496,18 @@ func main() {
 			return
 		}
 		go func() {
-			if err := src.Respond(context.Background(), req.ID, req.Response); err != nil {
+			ctx := context.Background()
+			var err error
+			if series != "" {
+				y, m, d := time.Now().Date()
+				today := time.Date(y, m, d, 0, 0, 0, 0, time.Local)
+				err = answerSeries(ctx, src, series, req.Response, today, today.AddDate(0, 0, 7)) // what the agenda shows
+			} else {
+				err = src.Respond(ctx, req.ID, req.Response)
+			}
+			if err != nil {
 				log.Printf("respond %s: %v", req.ID, err)
+				app.Event.Emit("respond:failed", req.ID) // the refresh below shows the answer that stuck
 			}
 			refresh()
 		}()

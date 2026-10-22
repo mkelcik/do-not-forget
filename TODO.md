@@ -5,7 +5,6 @@ What's left, roughly in the order we want to do it within each section.
 ## Google
 
 - [ ] Check over a few days with real accounts: token refresh, RSVP, disconnect
-- [ ] RSVP for the whole series, not just one occurrence
 
 ## Settings that work
 

@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Answer a recurring meeting for the whole series: after Yes / Maybe / No, pick "This event"
+  or "All events", as in Google Calendar. In the agenda and in the meeting-start alert.
+- An answer that couldn't be sent now says so under the buttons, instead of quietly reverting.
+
 ## [0.8.4] - 2026-10-16
 
 ### Added
