@@ -5,11 +5,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-22
+
 ### Added
 
 - Answer a recurring meeting for the whole series: after Yes / Maybe / No, pick "This event"
   or "All events", as in Google Calendar. In the agenda and in the meeting-start alert.
 - An answer that couldn't be sent now says so under the buttons, instead of quietly reverting.
+- `.deb` packages for Ubuntu, Kubuntu and Debian (x86-64 and ARM64), installed with
+  `sudo apt install ./do-not-forget_<version>_<arch>.deb`.
+
+### Changed
+
+- The website moved to [donotforget.dev](https://donotforget.dev/), with new screenshots and
+  the meeting-start alert.
+
+### Security
+
+- Built with Go 1.27.3, which fixes a certificate verification issue in `crypto/x509`
+  (GO-2026-6809).
 
 ## [0.8.4] - 2026-10-16
 
@@ -87,7 +101,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.8.4...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/mkelcik/do-not-forget/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/mkelcik/do-not-forget/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/mkelcik/do-not-forget/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/mkelcik/do-not-forget/compare/v0.8.1...v0.8.2
