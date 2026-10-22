@@ -178,7 +178,7 @@ func main() {
 	}
 	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
 	updateVersion := ""         // a newer release found by the updater, guarded by mu
-	autostartError := ""        // the last start-at-login change that failed, guarded by mu
+	autostartFailed := false    // the last start-at-login change failed, guarded by mu
 	clientErr := ""             // saving the own client failed, guarded by mu
 	mgr := &accountManager{mu: &mu, list: &accounts, removing: map[string]bool{}, saveConfig: saveConfig}
 
@@ -677,8 +677,12 @@ func main() {
 	sendLanguage := func() {
 		mu.Lock()
 		setting, trayStyle, trayTitleMax, update := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax, updateVersion
-		settings, autostartErr, autostart := cfg.settings(), autostartError, cfg.FlatpakAutostart
+		settings, failed, autostart := cfg.settings(), autostartFailed, cfg.FlatpakAutostart
 		mu.Unlock()
+		autostartErr := ""
+		if failed {
+			autostartErr = T("settings.autostart_error") // the cause is in the log
+		}
 		if flatpakID == "" {
 			var err error
 			if autostart, err = app.Autostart.IsEnabled(); err != nil {
@@ -692,6 +696,8 @@ func main() {
 			// Settings › Menu bar, offered on macOS only.
 			"trayStyle": trayStyle, "trayTitleMax": trayTitleMax, "platform": runtime.GOOS,
 			"settings": settings, "autostart": autostart, "autostartError": autostartErr,
+			// Inside Flatpak xdg-mime can't see the host's apps, so meetings always open in the browser.
+			"flatpak": flatpakID != "",
 		})
 	}
 	applyLanguage := func() {
@@ -757,10 +763,9 @@ func main() {
 				err = app.Autostart.Disable()
 			}
 			mu.Lock()
-			autostartError = ""
+			autostartFailed = err != nil
 			if err != nil {
 				log.Printf("autostart: %v", err)
-				autostartError = err.Error()
 			}
 			mu.Unlock()
 			sendLanguage() // shows the registration as the system has it now
