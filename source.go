@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"sort"
 	"time"
@@ -27,8 +28,7 @@ type Event struct {
 	// (my own event, no guest list).
 	Response string `json:"response,omitempty"`
 	// SeriesID is the whole recurring series, in the same form as ID; empty for one-off events.
-	// Answering for the series sends it to Respond in place of ID. Occurrences the organizer
-	// changed on their own may keep their answer, as with "all events" in Google Calendar.
+	// Respond takes it in place of ID to answer the series; see answerSeries.
 	SeriesID string `json:"seriesId,omitempty"`
 
 	src Source // which source produced it, so RSVPs go back to the right account
@@ -46,6 +46,32 @@ type Source interface {
 	Events(ctx context.Context, from, to time.Time) ([]Event, error)
 	// Respond sets my RSVP (yes | maybe | no) on the event.
 	Respond(ctx context.Context, eventID, response string) error
+}
+
+// errNotInvited: I'm not on the event's guest list, e.g. invited to one occurrence of a series
+// but not to the series itself.
+var errNotInvited = errors.New("not invited to this event")
+
+// answerSeries answers a whole series, then every occurrence in [from, to) that still has another
+// answer: occurrences answered on their own don't follow the series (Google keeps them as
+// exceptions), and with an invitation to single occurrences there's no series to answer at all.
+// Occurrences further out than `to` keep such answers.
+func answerSeries(ctx context.Context, src Source, seriesID, response string, from, to time.Time) error {
+	errSeries := src.Respond(ctx, seriesID, response)
+	if errors.Is(errSeries, errNotInvited) {
+		errSeries = nil // the occurrences below are all there is to answer
+	}
+	evs, err := src.Events(ctx, from, to)
+	if err != nil {
+		return errors.Join(errSeries, err)
+	}
+	errs := []error{errSeries}
+	for _, e := range evs {
+		if e.SeriesID == seriesID && e.Response != "" && e.Response != response {
+			errs = append(errs, src.Respond(ctx, e.ID, response))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // fetchAll merges every source into one list sorted by start.

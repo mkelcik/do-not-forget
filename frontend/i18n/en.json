@@ -41,6 +41,7 @@
   "rsvp.this": "This event",
   "rsvp.all": "All events",
   "rsvp.cancel": "Cancel",
+  "rsvp.failed": "Couldn't send the answer. Try again.",
   "status.yes": "accepted",
   "status.maybe": "maybe",
   "status.no": "declined",

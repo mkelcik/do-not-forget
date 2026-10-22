@@ -82,6 +82,7 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .scope { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--text); }
 .scope button:not(.link-btn) { border: 1px solid var(--line); border-radius: 7px; padding: 3px 10px; }
 .scope button:not(.link-btn):hover { background: var(--line); }
+.rsvp-failed { margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--danger); }
 .hero .ask .scope { margin-top: 0; }
 .person.maybe b { background: var(--warn); color: #fff; }
 .conflict { margin: 4px 0; padding: 2px 0 2px; border-radius: 10px;
@@ -296,7 +297,7 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
 
 <script type="module">
 import { Events } from "/wails/runtime.js";
-import { t, i18n, onLanguage, setLanguage, hm, dur, esc, joinLabel, openURL, linkify } from "/i18n.js";
+import { t, i18n, onLanguage, setLanguage, hm, dur, esc, joinLabel, openURL, linkify, makeRSVP } from "/i18n.js";
 
 // Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
 let events = [], synced = null, sources = 1;
@@ -314,20 +315,15 @@ const until = (d) => {
 };
 const sameDay = (d, n) => d.toDateString() === at(n, 0).toDateString();
 const visible = () => events.filter((e) => !hidden.has(e.calendar) && (i18n.settings.showDeclined || e.response !== "no"));
-// A recurring event's answer waits here until "this event" or "all events" is picked, as in Google Calendar.
-let pick = null; // { id, response }
-const rsvp = (e) => {
-  const shown = pick?.id === e.id ? pick.response : e.response;
-  return `<div class="rsvp">${["yes", "maybe", "no"].map((r) =>
-    `<button data-respond="${r}" data-id="${esc(e.id)}" class="${shown === r ? "on" : ""}">${t("rsvp." + r)}</button>`).join("")}</div>` +
-    (pick?.id === e.id ? `<div class="scope"><button data-scope="one">${t("rsvp.this")}</button><button data-scope="all">${t("rsvp.all")}</button>
-      <button class="link-btn" data-scope="">${t("rsvp.cancel")}</button></div>` : "");
-};
-// answer sends the RSVP; for the whole series every loaded occurrence changes at once.
-const answer = (e, response, all) => {
-  events.filter((x) => x === e || (all && x.seriesId === e.seriesId)).forEach((x) => { x.response = response; }); // optimistic, the refresh confirms
-  Events.Emit("respond", { id: e.id, response, series: all });
-};
+const rsvp = makeRSVP({
+  find: (id) => events.find((x) => x.id === id),
+  // Optimistic: the backend answers every loaded occurrence of a series too, the refresh confirms.
+  answer: (e, response, all) => {
+    events.filter((x) => x === e || (all && x.seriesId === e.seriesId && x.response)).forEach((x) => { x.response = response; });
+    Events.Emit("respond", { id: e.id, response, series: all });
+  },
+  changed: () => render(),
+});
 const agoMin = (m) => m < 1 ? t("ago.now") : t("ago.min", { m });
 const ago = (d) => agoMin(Math.round((Date.now() - d) / 60000));
 const initial = (n) => (n || "?").charAt(0).toUpperCase();
@@ -354,7 +350,7 @@ function render() {
       <div class="title">${esc(next.title)}</div>
       <div class="meta">${hm(next.start)} – ${hm(next.end)} · ${dur(next)}${next.location ? " · " + esc(next.location) : ""}</div>
       ${running ? `<div class="progress"><i style="width:${pct}%"></i></div>` : ""}
-      ${next.response === "pending" ? `<div class="ask">${t("rsvp.question")} ${rsvp(next)}</div>` : ""}
+      ${next.response === "pending" ? `<div class="ask">${t("rsvp.question")} ${rsvp.html(next, "hero")}</div>` : ""}
       ${next.link ? `<div class="row"><span class="meta">${t("hero.attendees", { count: (next.attendees || []).length })}</span><button class="join" data-url="${esc(next.link)}">${joinLabel(next)}</button></div>` : ""}
     </div>`;
   }
@@ -438,7 +434,7 @@ function detail(e) {
   const body = [
     e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
     e.description && `<div><div class="k">${t("detail.description")}</div>${description(e)}</div>`,
-    e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp(e)}</div>`,
+    e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp.html(e, "detail")}</div>`,
     people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
     actions && `<div class="actions">${actions}</div>`,
   ].filter(Boolean).join("");
@@ -547,20 +543,7 @@ onLanguage(() => { fillSettings(); render(); });
 
 document.addEventListener("click", (ev) => {
   const t = ev.target;
-  const ans = t.closest("[data-respond]");
-  if (ans) {
-    const e = events.find((x) => x.id === ans.dataset.id);
-    if (e?.seriesId) pick = { id: e.id, response: ans.dataset.respond };
-    else if (e) answer(e, ans.dataset.respond, false);
-    return render();
-  }
-  const scope = t.closest("[data-scope]");
-  if (scope) {
-    const e = events.find((x) => x.id === pick?.id);
-    if (e && scope.dataset.scope) answer(e, pick.response, scope.dataset.scope === "all");
-    pick = null;
-    return render();
-  }
+  if (rsvp.click(t)) return;
   if (t.closest("#connect")) {
     document.body.classList.add("settings-open");
     return document.getElementById("providers").classList.add("show");
@@ -601,7 +584,7 @@ document.addEventListener("click", (ev) => {
   if (chip) { const c = chip.dataset.cal; hidden.has(c) ? hidden.delete(c) : hidden.add(c); return render(); }
   const tab = t.closest(".tabs button");
   if (tab) {
-    day = +tab.dataset.day; open = null;
+    day = +tab.dataset.day; open = null; rsvp.pick = null; // an unanswered question doesn't linger
     document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b === tab));
     return render();
   }
@@ -612,7 +595,11 @@ document.addEventListener("click", (ev) => {
     return render();
   }
   const row = t.closest(".ev");
-  if (row) { open = open === row.dataset.id ? null : row.dataset.id; render(); }
+  if (row) {
+    if (rsvp.pick?.where === "detail") rsvp.pick = null; // collapsing or switching drops the question
+    open = open === row.dataset.id ? null : row.dataset.id;
+    render();
+  }
 });
 
 Events.On("events", ({ data }) => {

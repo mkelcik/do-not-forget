@@ -797,8 +797,9 @@ func htmlToText(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// Respond sets my RSVP on this occurrence, or on the whole series when id is a SeriesID: the
-// series' own event is read and patched, never an instance's guest list. attendees is replaced as a whole by a patch, so it's
+// Respond sets my RSVP on this occurrence, or on the series' own event when id is a SeriesID.
+// Occurrences answered on their own keep their answer then; answerSeries patches those too.
+// attendees is replaced as a whole by a patch, so it's
 // read first and only my entry changes. sendUpdates=none: the organizer sees the answer in their
 // calendar, without an email.
 func (g *googleSource) Respond(ctx context.Context, id, response string) error {
@@ -839,7 +840,7 @@ func (g *googleSource) Respond(ctx context.Context, id, response string) error {
 		}
 	}
 	if !found {
-		return errors.New("not invited to this event")
+		return errNotInvited
 	}
 	return g.do(ctx, http.MethodPatch, path, url.Values{"sendUpdates": {"none"}}, map[string]any{"attendees": ev.Attendees}, nil)
 }

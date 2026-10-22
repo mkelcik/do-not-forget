@@ -482,12 +482,12 @@ func main() {
 		}
 		mu.Lock()
 		var src Source
-		target := ""
+		series := ""
 		for _, e := range events {
 			if e.ID == req.ID {
-				src, target = e.src, e.ID
-				if req.Series && e.SeriesID != "" {
-					target = e.SeriesID
+				src = e.src
+				if req.Series {
+					series = e.SeriesID
 				}
 			}
 		}
@@ -496,8 +496,18 @@ func main() {
 			return
 		}
 		go func() {
-			if err := src.Respond(context.Background(), target, req.Response); err != nil {
-				log.Printf("respond %s: %v", target, err)
+			ctx := context.Background()
+			var err error
+			if series != "" {
+				y, m, d := time.Now().Date()
+				today := time.Date(y, m, d, 0, 0, 0, 0, time.Local)
+				err = answerSeries(ctx, src, series, req.Response, today, today.AddDate(0, 0, 7)) // what the agenda shows
+			} else {
+				err = src.Respond(ctx, req.ID, req.Response)
+			}
+			if err != nil {
+				log.Printf("respond %s: %v", req.ID, err)
+				app.Event.Emit("respond:failed", req.ID) // the refresh below shows the answer that stuck
 			}
 			refresh()
 		}()

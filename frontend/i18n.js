@@ -40,6 +40,44 @@ export const joinLabel = (e) => e.service ? t("join.via", { service: e.service }
 // Links open through the backend, which only passes http(s) on to the OS.
 export const openURL = (url) => Events.Emit("open", url);
 
+// RSVP buttons and their state, shared by the popup and the alert. On a recurring event the answer
+// first asks "this event" or "all events", as in Google Calendar; nothing is sent until then.
+// answer(e, response, all) sends it; changed() re-renders. `where` tells apart two places showing
+// the same event, so the question appears only where it was asked.
+export function makeRSVP({ find, answer, changed }) {
+  const r = { pick: null, failed: new Set() }; // pick: { id, response, where }
+  r.html = (e, where = "") => {
+    const asking = r.pick?.id === e.id && r.pick.where === where;
+    const shown = asking ? r.pick.response : e.response;
+    return `<div class="rsvp">${["yes", "maybe", "no"].map((x) =>
+      `<button data-respond="${x}" data-id="${esc(e.id)}" data-where="${where}" class="${shown === x ? "on" : ""}">${t("rsvp." + x)}</button>`).join("")}</div>` +
+      (asking ? `<div class="scope"><button data-scope="one">${t("rsvp.this")}</button><button data-scope="all">${t("rsvp.all")}</button>
+        <button class="cancel link-btn" data-scope="">${t("rsvp.cancel")}</button></div>` : "") +
+      (r.failed.has(e.id) ? `<div class="rsvp-failed">${t("rsvp.failed")}</div>` : "");
+  };
+  // click handles a click on the RSVP buttons; false when it was something else.
+  r.click = (target) => {
+    const ans = target.closest("[data-respond]");
+    if (ans) {
+      const e = find(ans.dataset.id);
+      if (e) r.failed.delete(e.id);
+      if (e?.seriesId) r.pick = { id: e.id, response: ans.dataset.respond, where: ans.dataset.where };
+      else if (e) { r.pick = null; answer(e, ans.dataset.respond, false); }
+      changed();
+      return true;
+    }
+    const scope = target.closest("[data-scope]");
+    if (!scope) return false;
+    const e = r.pick && find(r.pick.id);
+    if (e && scope.dataset.scope) answer(e, r.pick.response, scope.dataset.scope === "all");
+    r.pick = null;
+    changed();
+    return true;
+  };
+  Events.On("respond:failed", ({ data }) => { r.failed.add(data); changed(); });
+  return r;
+}
+
 export function onLanguage(cb) { listeners.push(cb); }
 export function setLanguage(code) { Events.Emit("i18n:set", code); }
 
