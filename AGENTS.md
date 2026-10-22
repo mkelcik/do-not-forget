@@ -26,7 +26,8 @@ no frontend build step.
 | `platform_linux.go`, `platform_other.go` | Platform bits (Linux tray tooltip via D-Bus, taskbar) |
 | `frontend/index.html` | Popup: agenda, details, settings |
 | `frontend/alert.html` | Maximised meeting-start alert |
-| `scripts/dist.sh` | Release archive for the current OS/arch |
+| `scripts/dist.sh` | Release archive for the current OS/arch (plus `.deb` and `.rpm` on Linux) |
+| `packaging/aur/PKGBUILD` | AUR package `do-not-forget-bin`; release.yml pushes it with the new version |
 | `scripts/appicon.go`, `assets/AppIcon.icns` | macOS app icon; regenerate with `go run scripts/appicon.go` |
 | `docs/` | GitHub Pages site: home page and privacy policy (plain HTML, no build) |
 

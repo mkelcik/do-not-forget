@@ -39,15 +39,17 @@ Or download the archive for your system from [Releases](https://github.com/mkelc
 | System | File | Notes |
 | --- | --- | --- |
 | Ubuntu / Kubuntu / Debian x86-64 / ARM64 | `do-not-forget_<version>_<arch>.deb` | Install with `sudo apt install ./do-not-forget_<version>_<arch>.deb`; dependencies are installed automatically. |
+| Fedora / openSUSE x86-64 / ARM64 | `do-not-forget_<version>_<arch>.rpm` | Install with `sudo dnf install ./do-not-forget_<version>_<arch>.rpm` (or `sudo zypper install`). |
+| Arch Linux | AUR [`do-not-forget-bin`](https://aur.archlinux.org/packages/do-not-forget-bin) | Install with an AUR helper, e.g. `yay -S do-not-forget-bin`. |
 | Linux x86-64 / ARM64 | `do-not-forget_linux_*.tar.gz` | Needs GTK 4 and WebKitGTK 6 (`sudo apt install libgtk-4-1 libwebkitgtk-6.0-4`). GNOME needs the AppIndicator extension for tray icons. |
 | macOS (Apple Silicon) | `do-not-forget_darwin_arm64.zip` | Not notarized yet: right-click the app → Open on first launch. |
 | Windows x86-64 / ARM64 | `do-not-forget_windows_*.zip` | SmartScreen may warn about an unknown publisher. |
 
-Linux releases build on Ubuntu 24.04. The `.deb` requires compatible system libraries;
-older distributions may not satisfy its dependencies. Install newer `.deb` files with the
-same `apt install` command to upgrade. The app's update button opens the release page when
-installed in `/usr/bin`. Google accounts need a running Secret Service keychain provider.
-To build locally, install `dpkg-dev` and run `make dist VERSION=0.1.0` on Linux.
+Linux releases build on Ubuntu 24.04. The `.deb` and `.rpm` require compatible system
+libraries; older distributions may not satisfy their dependencies. Install newer packages
+with the same `apt` / `dnf` command to upgrade. The app's update button opens the release
+page when installed in `/usr/bin`. Google accounts need a running Secret Service keychain provider.
+To build locally, install `dpkg-dev` and `rpm` and run `make dist VERSION=0.1.0` on Linux.
 
 ## Google Calendar
 
@@ -99,7 +101,8 @@ GOOGLE_CLIENT_SECRET=GOCSPX-…
 or offsets from app start like `"+12m"`. `-preview-alert` shows the meeting-start alert right away.
 
 Releases: tag a commit on `main` (`git tag v0.1.0 && git push origin v0.1.0`); CI builds
-Linux, macOS and Windows archives plus Linux `.deb` packages and publishes them with `SHA256SUMS`.
+Linux, macOS and Windows archives plus Linux `.deb` and `.rpm` packages, publishes them with
+`SHA256SUMS` and updates the Homebrew cask and the AUR package.
 
 Built with Go and [Wails v3](https://v3alpha.wails.io/).
 
