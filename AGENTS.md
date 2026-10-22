@@ -29,6 +29,7 @@ no frontend build step.
 | `scripts/dist.sh` | Release archive for the current OS/arch |
 | `scripts/appicon.go`, `assets/AppIcon.icns` | macOS app icon; regenerate with `go run scripts/appicon.go` |
 | `docs/` | GitHub Pages site: home page and privacy policy (plain HTML, no build) |
+| `.oss-scanner/` | Build image and threat model for Anthropic's OSS Scanner (anthropics/oss-scanner) |
 
 ## Commands
 
