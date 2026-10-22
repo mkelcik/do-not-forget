@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- A `.deb` or `.rpm` install updates from the app: Update downloads and verifies the new
+  package, installs it after asking for your password and restarts. It used to open the
+  download page.
+
 ## [0.11.0] - 2026-10-23
 
 ### Added

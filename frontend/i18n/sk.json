@@ -153,6 +153,7 @@
   "update.action": "Aktualizovať",
   "update.body_install": "Aktualizácia nainštaluje novú verziu a reštartuje appku.",
   "update.body_download": "Aktualizovať otvorí stránku na stiahnutie novej verzie.",
+  "update.body_package": "Aktualizovať si vypýta heslo, nainštaluje novú verziu a reštartuje appku.",
   "update.failed_title": "Aktualizácia zlyhala",
   "update.failed_body": "Skúsim to znova pri ďalšej kontrole. Podrobnosti sú v logu.",
 

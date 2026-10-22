@@ -46,9 +46,10 @@ Or download the archive for your system from [Releases](https://github.com/mkelc
 | Windows x86-64 / ARM64 | `do-not-forget_windows_*.zip` | SmartScreen may warn about an unknown publisher. |
 
 Linux releases build on Ubuntu 24.04. The `.deb` and `.rpm` require compatible system
-libraries; older distributions may not satisfy their dependencies. Install newer packages
-with the same `apt` / `dnf` command to upgrade. The app's update button opens the release
-page when installed in `/usr/bin`. Google accounts need a running Secret Service keychain provider.
+libraries; older distributions may not satisfy their dependencies. The app's update button
+installs a newer `.deb` / `.rpm` through `apt-get`, `dnf` or `zypper` after asking for your
+password (pkexec); installing it by hand with the same command works too. The AUR package
+updates through your AUR helper. Google accounts need a running Secret Service keychain provider.
 To build locally, install `dpkg-dev` and `rpm` and run `make dist VERSION=0.1.0` on Linux.
 
 ## Google Calendar

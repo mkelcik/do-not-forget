@@ -2,13 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -64,6 +70,7 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			if rel == nil {
 				continue
 			}
+			offered.Store(rel.Version)
 			available(rel.Version)
 			if muted() {
 				continue
@@ -71,6 +78,9 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			body := T("update.body_install")
 			if !canSelfUpdate() {
 				body = T("update.body_download")
+				if installedBy() != "" {
+					body = T("update.body_package")
+				}
 			}
 			if err := notifier.SendNotificationWithActions(notifications.NotificationOptions{
 				ID:         "update",
@@ -93,15 +103,38 @@ func installUpdate(app *application.App, notifier *notifications.NotificationSer
 		return // a second click while the first install is still running
 	}
 	defer installing.Unlock()
-	if !canSelfUpdate() {
-		// Installed by a package manager (e.g. .deb in /usr/bin): send them to the release page.
+	ctx := context.Background()
+	var err error
+	v, _ := offered.Load().(string)
+	switch kind := installedBy(); {
+	case canSelfUpdate():
+		err = app.Updater.DownloadAndInstall(ctx)
+		if err == nil {
+			err = app.Updater.Restart(ctx) // exits this process on success
+		}
+	case kind != "" && v != "":
+		// A .deb or .rpm: the package manager installs it, after an admin password.
+		var path string
+		base := "https://github.com/" + repo + "/releases/download/v" + strings.TrimPrefix(v, "v") + "/"
+		path, err = downloadPackage(ctx, &http.Client{Timeout: 10 * time.Minute}, base, kind, v)
+		if err == nil {
+			err = installPackage(ctx, kind, path)
+			_ = os.Remove(path)
+		}
+		if errors.Is(err, errCancelled) {
+			return
+		}
+		if err == nil {
+			err = relaunch()
+		}
+		if err == nil {
+			app.Quit()
+			return
+		}
+	default:
+		// Installed some other way (e.g. AUR): send them to the release page.
 		_ = app.Browser.OpenURL(releasesURL)
 		return
-	}
-	ctx := context.Background()
-	err := app.Updater.DownloadAndInstall(ctx)
-	if err == nil {
-		err = app.Updater.Restart(ctx) // exits this process on success
 	}
 	if err != nil && !errors.Is(err, updater.ErrDownloadInProgress) {
 		log.Printf("update: %v", err) // the full chain is for the log, not the toast
@@ -130,4 +163,70 @@ func canSelfUpdate() bool {
 	_ = f.Close()
 	_ = os.Remove(f.Name()) //nolint:gosec // G703 false positive: the name comes from os.CreateTemp
 	return true
+}
+
+// offered is the version the last check found; installUpdate needs it for a package.
+var offered atomic.Value
+
+// errCancelled is a pkexec password prompt the user dismissed: nothing to report.
+var errCancelled = errors.New("update cancelled")
+
+// packageAsset is the name scripts/dist.sh gives the release's .deb or .rpm for goarch.
+func packageAsset(kind, version, goarch string) string {
+	version = strings.ReplaceAll(strings.TrimPrefix(version, "v"), "-", "~") // Debian/RPM prerelease order
+	if kind == "rpm" {
+		goarch = map[string]string{"amd64": "x86_64", "arm64": "aarch64"}[goarch]
+	}
+	return fmt.Sprintf("do-not-forget_%s_%s.%s", version, goarch, kind)
+}
+
+// downloadPackage fetches the release's package into a temporary file and checks it like an
+// archive: its <asset>.manifest.sig must cover this version, platform, name and SHA-256, so
+// only a signed package of exactly that release reaches the root installer.
+func downloadPackage(ctx context.Context, client *http.Client, base, kind, version string) (string, error) {
+	asset := packageAsset(kind, version, runtime.GOARCH)
+	sig, err := signedProvider{client: client}.fetchSignature(ctx, base+asset+".manifest.sig")
+	if err != nil {
+		return "", fmt.Errorf("package manifest signature: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+asset, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GET %s: %s", asset, resp.Status)
+	}
+	f, err := os.CreateTemp("", "do-not-forget-*."+kind)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.New()
+	_, err = io.Copy(io.MultiWriter(f, h), resp.Body)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = verifyPackage(version, asset, h.Sum(nil), sig)
+	}
+	if err != nil {
+		_ = os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+func verifyPackage(version, asset string, sum, sig []byte) error {
+	key, err := publicKey()
+	if err != nil {
+		return err
+	}
+	if !ed25519.Verify(key, updateManifest(strings.TrimPrefix(version, "v"), runtime.GOOS, runtime.GOARCH, asset, sum), sig) {
+		return fmt.Errorf("package manifest signature doesn't match version %s of %s", version, asset)
+	}
+	return nil
 }
