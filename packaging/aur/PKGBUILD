@@ -1,0 +1,24 @@
+# Maintainer: Michal Kelčík <mkelcik@gmail.com>
+# Repackages the release .deb. release.yml bumps pkgver and the checksums in the AUR repository.
+pkgname=do-not-forget-bin
+pkgver=0.9.0
+pkgrel=1
+pkgdesc='Meeting reminders in the system tray'
+arch=(x86_64 aarch64)
+url='https://donotforget.dev/'
+license=(MIT)
+depends=(gtk4 webkitgtk-6.0 libsoup3 glib2 libx11 glibc xdg-utils)
+optdepends=('gnome-shell-extension-appindicator: tray icon on GNOME')
+provides=(do-not-forget)
+conflicts=(do-not-forget)
+options=(!debug)
+_src="https://github.com/mkelcik/do-not-forget/releases/download/v$pkgver/do-not-forget_${pkgver}"
+source_x86_64=("${_src}_amd64.deb")
+source_aarch64=("${_src}_arm64.deb")
+sha256sums_x86_64=('c9eb1caab7c0a203efdee95b1c6b0f44ea1fa7c923fbde3cbad6e81ceb70f0d7')
+sha256sums_aarch64=('664e8d460bf9e150bfbd7e94832458ca408a0c381e266485e813de19e3dec92b')
+
+package() {
+  bsdtar -xf data.tar.* -C "$pkgdir"
+  install -Dm644 "$pkgdir/usr/share/doc/do-not-forget/copyright" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

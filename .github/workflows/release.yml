@@ -43,7 +43,7 @@ jobs:
           go-version-file: go.mod
           cache: true
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev dpkg-dev
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev dpkg-dev rpm
       - name: Package
         shell: bash
         env:
@@ -62,6 +62,13 @@ jobs:
           cmp build/do-not-forget build/deb-check/usr/bin/do-not-forget
           test -f build/deb-check/usr/share/applications/do-not-forget.desktop
           test -f build/deb-check/usr/share/icons/hicolor/scalable/apps/do-not-forget.svg
+      - name: Check RPM package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          test "$(rpm -qp --qf '%{NAME}' dist/*.rpm)" = do-not-forget
+          rpm -qpl dist/*.rpm | grep -qx /usr/bin/do-not-forget
+          rpm -qpR dist/*.rpm | grep -q '^libwebkitgtk-6.0.so.4'
       - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}-${{ matrix.goarch || 'native' }}
@@ -97,8 +104,8 @@ jobs:
             openssl dgst -sha256 -binary -out "$f.digest" "$f"
             openssl pkeyutl -sign -inkey "$key" -rawin -in "$f.digest" -out "$f.sig"
             rm "$f.digest"
-            # .deb files are installed by apt, not the in-app updater; only archives need a manifest.
-            case "$f" in *.deb) continue;; esac
+            # Packages are installed by apt/dnf, not the in-app updater; only archives need a manifest.
+            case "$f" in *.deb|*.rpm) continue;; esac
             # <asset>.manifest.sig: version, platform and hash together, so an old archive can't
             # pass as a newer version. Byte for byte updateManifest in signing.go.
             platform="${f%%.*}"; platform="${platform#do-not-forget_}"   # darwin_arm64
@@ -146,3 +153,43 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -qam "do-not-forget $version"
           git push -q
+
+  # Pushes packaging/aur/PKGBUILD with this version and the .deb checksums to the AUR package
+  # do-not-forget-bin. Needs AUR_SSH_KEY: a private key registered with an AUR account. Without
+  # it, or for a pre-release, the release still succeeds and the AUR package stays as it is.
+  aur:
+    needs: publish
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Update the AUR package
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$AUR_SSH_KEY" ]; then
+            echo "::warning::AUR_SSH_KEY not set; the AUR package wasn't updated"; exit 0
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          sums="$(gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" -p SHA256SUMS -O -)"
+          sha() { awk -v f="do-not-forget_${version}_$1.deb" '$2 == f { print $1 }' <<<"$sums"; }
+          amd64="$(sha amd64)"; arm64="$(sha arm64)"
+          test -n "$amd64" && test -n "$arm64" || { echo "::error::no .deb checksums in SHA256SUMS"; exit 1; }
+          key="$(mktemp)"; trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$AUR_SSH_KEY" > "$key"
+          export GIT_SSH_COMMAND="ssh -i $key -o StrictHostKeyChecking=accept-new"
+          git clone -q ssh://aur@aur.archlinux.org/do-not-forget-bin.git aur
+          sed -E "s/^pkgver=.*/pkgver=$version/; s/^pkgrel=.*/pkgrel=1/;
+            s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$amd64')/;
+            s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$arm64')/" packaging/aur/PKGBUILD > aur/PKGBUILD
+          # makepkg only runs on Arch, and not as root.
+          docker run --rm -v "$PWD/aur:/aur:ro" archlinux:latest \
+            bash -c 'useradd -m b && cp /aur/PKGBUILD /home/b && cd /home/b && su b -c "makepkg --printsrcinfo"' > aur/.SRCINFO
+          cd aur
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && { echo "AUR already at $version"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qm "do-not-forget $version"
+          git push -q origin HEAD:master

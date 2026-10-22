@@ -47,6 +47,33 @@ CONTROL
 	depends="$(cd build && dpkg-shlibdeps -O -e "debian/$NAME/usr/bin/$NAME")"
 	printf 'Depends: %s, xdg-utils\n' "${depends#shlibs:Depends=}" >> "$stage/DEBIAN/control"
 	dpkg-deb --build --root-owner-group "$stage" "dist/${NAME}_${deb_version}_${GOARCH}.deb"
+	# RPM from the same files. rpmbuild derives library requirements (sonames) from the binary.
+	rpm_arch="$(case "$GOARCH" in amd64) echo x86_64 ;; arm64) echo aarch64 ;; *) echo "$GOARCH" ;; esac)"
+	cat >build/rpm.spec <<SPEC
+Name: $NAME
+Version: $deb_version
+Release: 1
+Summary: Meeting reminders in the system tray
+License: MIT
+URL: https://donotforget.dev/
+Requires: xdg-utils
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+
+%description
+Shows upcoming calendar events, reminders and one-click meeting links.
+
+%install
+cp -a $PWD/$stage/usr %{buildroot}/
+
+%files
+/usr/bin/$NAME
+/usr/share/applications/$NAME.desktop
+/usr/share/icons/hicolor/scalable/apps/$NAME.svg
+%license /usr/share/doc/$NAME/copyright
+SPEC
+	rpmbuild -bb --quiet --target "$rpm_arch" --define "_topdir $PWD/build/rpm" build/rpm.spec
+	cp build/rpm/RPMS/"$rpm_arch"/*.rpm "dist/${NAME}_${deb_version}_${rpm_arch}.rpm"
 	;;
 darwin)
 	app="build/$NAME.app"
