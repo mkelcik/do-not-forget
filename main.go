@@ -26,6 +26,10 @@ import (
 //go:embed frontend
 var assets embed.FS
 
+// flatpakID is the app ID inside the Flatpak sandbox, "" elsewhere. Flatpak updates the app
+// and the Background portal handles start at login.
+var flatpakID = os.Getenv("FLATPAK_ID")
+
 func main() {
 	dummyPath := flag.String("dummy", "", "development: read fake events from this JSON file (e.g. dummy.json)")
 	previewAlert := flag.Bool("preview-alert", false, "show the fullscreen meeting alert for the next event right after start")
@@ -49,6 +53,8 @@ func main() {
 		Services: []application.Service{application.NewService(notifier)},
 		Assets:   application.AssetOptions{Handler: application.BundledAssetFileServer(frontend)},
 		Mac:      application.MacOptions{ActivationPolicy: application.ActivationPolicyAccessory},
+		// The sandbox only lets WebKit own bus names under the Flatpak app ID.
+		Linux: application.LinuxOptions{ApplicationID: flatpakID},
 		Windows: application.WindowsOptions{
 			DisableQuitOnLastWindowClosed: true,
 		},
@@ -671,11 +677,13 @@ func main() {
 	sendLanguage := func() {
 		mu.Lock()
 		setting, trayStyle, trayTitleMax, update := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax, updateVersion
-		settings, autostartErr := cfg.settings(), autostartError
+		settings, autostartErr, autostart := cfg.settings(), autostartError, cfg.FlatpakAutostart
 		mu.Unlock()
-		autostart, err := app.Autostart.IsEnabled()
-		if err != nil {
-			log.Printf("autostart status: %v", err)
+		if flatpakID == "" {
+			var err error
+			if autostart, err = app.Autostart.IsEnabled(); err != nil {
+				log.Printf("autostart status: %v", err)
+			}
 		}
 		t := tr.Load()
 		app.Event.Emit("i18n", map[string]any{
@@ -738,9 +746,14 @@ func main() {
 		on, _ := ev.Data.(bool)
 		autostartChange.set(on, func(on bool) {
 			var err error
-			if on {
+			switch {
+			case flatpakID != "":
+				if err = flatpakAutostart(on); err == nil {
+					saveConfig(func(c *Config) { c.FlatpakAutostart = on })
+				}
+			case on:
 				err = app.Autostart.Enable()
-			} else {
+			default:
 				err = app.Autostart.Disable()
 			}
 			mu.Lock()

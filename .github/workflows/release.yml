@@ -69,6 +69,22 @@ jobs:
           test "$(rpm -qp --qf '%{NAME}' dist/*.rpm)" = do-not-forget
           rpm -qpl dist/*.rpm | grep -qx /usr/bin/do-not-forget
           rpm -qpR dist/*.rpm | grep -q '^libwebkitgtk-6.0.so.4'
+      # Flathub builds offline from this archive (packaging/flatpak). Only in SHA256SUMS; the
+      # updater never picks it, its name has no OS/arch.
+      - name: Source with vendored modules
+        if: matrix.os == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"; src="do-not-forget-$version"
+          mkdir "build/$src"
+          git archive HEAD | tar -x -C "build/$src"
+          cd "build/$src"
+          go mod vendor
+          echo "$version" > VERSION
+          sed -i -E "s|<release version=\"[^\"]*\" date=\"[^\"]*\"/>|<release version=\"$version\" date=\"$(date -u +%F)\"/>|" \
+            packaging/flatpak/dev.donotforget.DoNotForget.metainfo.xml
+          grep -q "<release version=\"$version\"" packaging/flatpak/dev.donotforget.DoNotForget.metainfo.xml
+          cd .. && tar -czf "../dist/$src-vendored.tar.gz" "$src"
       - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}-${{ matrix.goarch || 'native' }}

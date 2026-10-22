@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.donotforget.DoNotForget</id>
+  <name>Do Not Forget</name>
+  <summary>Meeting reminders in the system tray</summary>
+  <developer id="dev.donotforget">
+    <name>Michal Kelčík</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>Do Not Forget keeps your next meeting one glance away. It shows today's agenda from your
+      Google calendars in the system tray, reminds you before a meeting starts and lets you join
+      Meet, Zoom or Teams calls or answer invitations in one click.</p>
+    <ul>
+      <li>Reminders before a meeting and a full-screen alert when it starts</li>
+      <li>One-click join links for Google Meet, Zoom and Microsoft Teams</li>
+      <li>Accept or decline invitations, for one event or the whole series</li>
+      <li>Several Google accounts and calendars</li>
+    </ul>
+    <p>The app has no servers and no telemetry. Sign-in tokens are kept in the system keychain.</p>
+  </description>
+  <launchable type="desktop-id">dev.donotforget.DoNotForget.desktop</launchable>
+  <url type="homepage">https://donotforget.dev/</url>
+  <url type="bugtracker">https://github.com/mkelcik/do-not-forget/issues</url>
+  <url type="vcs-browser">https://github.com/mkelcik/do-not-forget</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://donotforget.dev/screenshot.png</image>
+      <caption>The agenda with the meeting in progress and its join links</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://donotforget.dev/alert.png</image>
+      <caption>The alert when a meeting starts</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <!-- release.yml sets this to the released version and date in the source archive Flathub builds. -->
+  <releases>
+    <release version="0.9.0" date="2026-10-22"/>
+  </releases>
+</component>
