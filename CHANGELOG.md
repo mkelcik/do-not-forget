@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-23
+
 ### Added
 
 - An account whose Google sign-in expired or was revoked now says so above the agenda and in
@@ -122,7 +124,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/mkelcik/do-not-forget/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mkelcik/do-not-forget/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/mkelcik/do-not-forget/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/mkelcik/do-not-forget/compare/v0.8.3...v0.8.4
