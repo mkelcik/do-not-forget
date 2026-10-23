@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -328,5 +329,34 @@ func TestAccountLabel(t *testing.T) {
 	}
 	if _, cals, _ := g.status(); cals[1].Name != "Janka" || cals[1].Default != "Family" || cals[0].Default != "Work" {
 		t.Errorf("calendars %+v", cals)
+	}
+}
+
+// An expired or revoked refresh token, a changed client and a token missing from the keychain all
+// ask for signing in again; other failures don't.
+func TestNeedsSignIn(t *testing.T) {
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, `{"error": "invalid_grant", "error_description": "Token has been expired or revoked."}`)
+	}))
+	defer tokenSrv.Close()
+	conf := &oauth2.Config{ClientID: "id", Endpoint: oauth2.Endpoint{TokenURL: tokenSrv.URL}}
+	stale := &oauth2.Token{AccessToken: "old", RefreshToken: "r", Expiry: time.Now().Add(-time.Hour)}
+	_, expired := conf.Client(context.Background(), stale).Get(tokenSrv.URL) // fails at the refresh
+
+	for _, c := range []struct {
+		err  error
+		want bool
+	}{
+		{expired, true},
+		{errClientGone, true},
+		{fmt.Errorf("keychain: %w", keyring.ErrNotFound), true},
+		{errors.New("GET /users/me/calendarList: 503 Service Unavailable"), false},
+		{nil, false},
+	} {
+		if got := brokenGoogleSource("me@x.sk", c.err).needsSignIn(); got != c.want {
+			t.Errorf("needsSignIn(%v) = %v, want %v", c.err, got, c.want)
+		}
 	}
 }

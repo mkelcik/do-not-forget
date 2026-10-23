@@ -93,8 +93,9 @@ func oauthCtx() context.Context {
 }
 
 // googleLogin runs the installed-app flow: the browser signs in and redirects to a one-shot
-// server on 127.0.0.1, PKCE protects the code. Gives up after 5 minutes.
-func googleLogin(ctx context.Context, c oauthClient, openURL func(string) error) (*oauth2.Token, error) {
+// server on 127.0.0.1, PKCE protects the code. Gives up after 5 minutes. A non-empty email
+// preselects that account in Google's sign-in, for connecting an account again.
+func googleLogin(ctx context.Context, c oauthClient, openURL func(string) error, email string) (*oauth2.Token, error) {
 	if c.ID == "" {
 		return nil, errors.New("no Google client ID")
 	}
@@ -134,10 +135,15 @@ func googleLogin(ctx context.Context, c oauthClient, openURL func(string) error)
 	go func() { _ = srv.Serve(ln) }()
 	defer func() { _ = srv.Close() }()
 
-	if err := openURL(conf.AuthCodeURL(state,
+	opts := []oauth2.AuthCodeOption{
 		oauth2.AccessTypeOffline,                    // a refresh token
 		oauth2.SetAuthURLParam("prompt", "consent"), // ... also when the account was connected before
-		oauth2.S256ChallengeOption(verifier))); err != nil {
+		oauth2.S256ChallengeOption(verifier),
+	}
+	if email != "" {
+		opts = append(opts, oauth2.SetAuthURLParam("login_hint", email))
+	}
+	if err := openURL(conf.AuthCodeURL(state, opts...)); err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -418,6 +424,18 @@ func (g *googleSource) status() (label string, cals []Calendar, errText string) 
 		errText = g.err.Error()
 	}
 	return label, append([]Calendar{}, g.calendars...), errText
+}
+
+// needsSignIn: the account syncs again only after signing in anew. Google answers invalid_grant
+// when the refresh token expired (after 7 days while the OAuth app was in Testing) or was
+// revoked, e.g. in the Google Account's permissions or by a password change.
+func (g *googleSource) needsSignIn() bool {
+	g.mu.Lock()
+	err := g.err
+	g.mu.Unlock()
+	var re *oauth2.RetrieveError
+	return errors.Is(err, errClientGone) || errors.Is(err, keyring.ErrNotFound) ||
+		(errors.As(err, &re) && re.ErrorCode == "invalid_grant")
 }
 
 // do calls the Calendar API and decodes the JSON answer into out.

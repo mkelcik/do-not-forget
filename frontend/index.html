@@ -33,6 +33,9 @@ header small { color: var(--muted); display: block; font-size: 12px; }
 .chip.off { opacity: .4; }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
+.signin { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 12px 8px; padding: 8px 12px;
+  border-radius: 10px; background: var(--card); border: 1px solid var(--danger); font-size: 12px; }
+.signin .link-btn { flex: none; font-weight: 600; }
 .hero { margin: 0 12px 10px; padding: 14px; border-radius: 12px; background: var(--card);
   border-left: 4px solid var(--c); box-shadow: 0 1px 3px #0000001a; }
 .hero .when { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--c); }
@@ -192,6 +195,7 @@ body.settings-open #settings { display: flex; }
 .cal-name:focus::placeholder { color: var(--muted); }
 .add-status { padding: 0 12px 10px; font-size: 12px; color: var(--muted); }
 .revoke-failed { padding: 0 12px 10px 48px; font-size: 12px; }
+.who [data-reconnect] { margin-left: -6px; align-self: flex-start; }
 .revoke-failed small { display: block; color: var(--danger); margin-bottom: 4px; }
 .revoke-failed .link-btn { margin-left: -6px; margin-right: 6px; }
 .client { margin-top: 8px; }
@@ -225,6 +229,7 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
   <div><h1 id="today"></h1><small id="summary"></small></div>
   <div class="chips" id="chips"></div>
 </header>
+<section id="signin"></section>
 <section id="hero"></section>
 <nav class="tabs"><button data-day="0" class="on" data-i18n="day.today"></button><button data-day="1" data-i18n="day.tomorrow"></button><button data-day="7" id="week-tab" data-i18n="tab.week"></button></nav>
 <main id="list"></main>
@@ -444,7 +449,15 @@ function detail(e) {
 
 // Settings › Accounts, from the backend's "accounts" event.
 let accounts = { accounts: [], google: false, adding: false, error: "", removing: [] };
+// Accounts that need signing in again, above the agenda: their events are missing from it.
+function renderSignIn() {
+  document.getElementById("signin").innerHTML = accounts.accounts.filter((a) => a.signIn).map((a) =>
+    `<div class="signin"><span>${t("agenda.signin_needed", { account: esc(a.label || a.email) })}</span>
+      <button class="link-btn" data-reconnect="${esc(a.email)}" ${accounts.adding ? "disabled" : ""}>${t("settings.reconnect")}</button></div>`).join("");
+}
+
 function renderAccounts() {
+  renderSignIn();
   const typing = document.activeElement?.classList;
   if (typing?.contains("acct-label") || typing?.contains("cal-name")) return; // don't wipe a name being typed
   const removing = new Set(accounts.removing || []);
@@ -453,6 +466,8 @@ function renderAccounts() {
         <div class="who"><input class="acct-label" data-email="${esc(a.email)}" value="${esc(a.label || "")}"
             placeholder="${esc(t("settings.account_name"))}" title="${esc(t("settings.account_rename"))}" maxlength="40">
           <small>${esc(a.email)}</small>${removing.has(a.email) ? `<small>${t("settings.disconnecting")}</small>`
+          : a.signIn ? `<small class="error" title="${esc(a.error)}">${t("settings.signin_needed")}</small>
+            <button class="link-btn" data-reconnect="${esc(a.email)}" ${accounts.adding ? "disabled" : ""}>${t("settings.reconnect")}</button>`
           : a.error ? `<small class="error">${t("settings.account_error", { error: esc(a.error) })}</small>`
           : synced ? `<small>${t("settings.synced", { provider: "Google", ago: ago(synced) })}</small>` : ""}</div>
         <button class="link-btn danger" data-remove="${esc(a.email)}" ${removing.has(a.email) ? "disabled" : ""}>${t("settings.disconnect")}</button></div>
@@ -554,6 +569,8 @@ document.addEventListener("click", (ev) => {
   if (t.closest("#close-settings")) return document.body.classList.remove("settings-open");
   if (t.closest("#add-account")) return document.getElementById("providers").classList.toggle("show");
   if (t.closest("#add-google")) return Events.Emit("account:add");
+  const reconnect = t.closest("[data-reconnect]");
+  if (reconnect) return Events.Emit("account:add", reconnect.dataset.reconnect); // signs in as that account
   if (t.closest("#update")) return Events.Emit("update:install");
   if (t.closest("#client-save")) {
     const id = document.getElementById("client-id"), secret = document.getElementById("client-secret");

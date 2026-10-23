@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- An account whose Google sign-in expired or was revoked now says so above the agenda and in
+  Settings, with a "Connect again" button that opens Google's sign-in for that account.
+
 ## [0.10.0] - 2026-10-22
 
 ### Added
