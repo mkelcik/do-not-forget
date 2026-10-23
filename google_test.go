@@ -343,7 +343,14 @@ func TestNeedsSignIn(t *testing.T) {
 	defer tokenSrv.Close()
 	conf := &oauth2.Config{ClientID: "id", Endpoint: oauth2.Endpoint{TokenURL: tokenSrv.URL}}
 	stale := &oauth2.Token{AccessToken: "old", RefreshToken: "r", Expiry: time.Now().Add(-time.Hour)}
-	_, expired := conf.Client(context.Background(), stale).Get(tokenSrv.URL) // fails at the refresh
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, tokenSrv.URL, nil)
+	resp, expired := conf.Client(context.Background(), stale).Do(req) // fails at the refresh
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if expired == nil {
+		t.Fatal("refresh against invalid_grant must fail")
+	}
 
 	for _, c := range []struct {
 		err  error
