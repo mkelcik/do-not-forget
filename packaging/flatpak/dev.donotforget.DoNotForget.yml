@@ -43,8 +43,8 @@ modules:
     sources:
       # Source with vendored Go modules (Flathub builds offline), from the GitHub release.
       - type: archive
-        url: https://github.com/mkelcik/do-not-forget/releases/download/v0.9.0/do-not-forget-0.9.0-vendored.tar.gz
-        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        url: https://github.com/mkelcik/do-not-forget/releases/download/v0.11.0/do-not-forget-0.11.0-vendored.tar.gz
+        sha256: 2a0a12e2027359a5ac368e59c1390bf04ef919021877155641b62462ec2654da
         x-checker-data:
           type: json
           url: https://api.github.com/repos/mkelcik/do-not-forget/releases/latest
