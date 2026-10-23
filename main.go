@@ -247,7 +247,7 @@ func main() {
 		for _, g := range gs {
 			label, cals, errText := g.status()
 			list = append(list, map[string]any{"email": g.email, "label": label, "calendars": cals, "error": errText,
-				"revokeFailed": g.revokeFailed()})
+				"revokeFailed": g.revokeFailed(), "signIn": g.needsSignIn()})
 		}
 		state["accounts"] = list
 		app.Event.Emit("accounts", state)
@@ -281,14 +281,14 @@ func main() {
 	// Connecting a Google account: browser sign-in, then the token into the keychain.
 	// Connecting one that's already there replaces its token and keeps its calendar choice.
 	// Connecting: browser sign-in first (no lock, it can take minutes), then the manager stores it.
-	addAccount := func() error {
+	addAccount := func(email string) error { // email: the account to connect again, or ""
 		if mgr.busy() {
 			return errBusy
 		}
 		mu.Lock()
 		c := activeClient()
 		mu.Unlock()
-		tok, err := googleLogin(context.Background(), c, app.Browser.OpenURL)
+		tok, err := googleLogin(context.Background(), c, app.Browser.OpenURL, email)
 		if err != nil {
 			return err
 		}
@@ -337,7 +337,8 @@ func main() {
 			refresh() // also re-emits the accounts
 		}()
 	})
-	app.Event.On("account:add", func(*application.CustomEvent) {
+	app.Event.On("account:add", func(ev *application.CustomEvent) {
+		email, _ := ev.Data.(string) // set when connecting an account again
 		mu.Lock()
 		if adding {
 			mu.Unlock()
@@ -347,7 +348,7 @@ func main() {
 		mu.Unlock()
 		emitAccounts()
 		go func() {
-			err := addAccount()
+			err := addAccount(email)
 			mu.Lock()
 			adding = false
 			if err != nil {
