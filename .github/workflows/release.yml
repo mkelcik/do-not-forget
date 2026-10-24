@@ -120,13 +120,18 @@ jobs:
             openssl dgst -sha256 -binary -out "$f.digest" "$f"
             openssl pkeyutl -sign -inkey "$key" -rawin -in "$f.digest" -out "$f.sig"
             rm "$f.digest"
-            # Packages are installed by apt/dnf, not the in-app updater; only archives need a manifest.
-            case "$f" in *.deb|*.rpm) continue;; esac
-            # <asset>.manifest.sig: version, platform and hash together, so an old archive can't
-            # pass as a newer version. Byte for byte updateManifest in signing.go.
-            platform="${f%%.*}"; platform="${platform#do-not-forget_}"   # darwin_arm64
+            # <asset>.manifest.sig: version, platform and hash together, so an old archive or
+            # package can't pass as a newer version. Byte for byte updateManifest in signing.go.
+            case "$f" in
+              *.deb|*.rpm)   # do-not-forget_0.10.0_x86_64.rpm, installed through pkexec by the updater
+                os=linux; arch="${f%.*}"; arch="${arch#do-not-forget_*_}"   # x86_64 has an underscore
+                case "$arch" in x86_64) arch=amd64;; aarch64) arch=arm64;; esac ;;
+              *)             # do-not-forget_darwin_arm64.zip
+                platform="${f%%.*}"; platform="${platform#do-not-forget_}"
+                os="${platform%_*}"; arch="${platform#*_}" ;;
+            esac
             printf 'do-not-forget update\nversion: %s\nos: %s\narch: %s\nasset: %s\nsha256: %s\n' \
-              "$version" "${platform%_*}" "${platform#*_}" "$f" "$(sha256sum "$f" | cut -d' ' -f1)" > "$f.manifest"
+              "$version" "$os" "$arch" "$f" "$(sha256sum "$f" | cut -d' ' -f1)" > "$f.manifest"
             openssl pkeyutl -sign -inkey "$key" -rawin -in "$f.manifest" -out "$f.manifest.sig"
             openssl pkeyutl -verify -pubin -inkey "$pub" -rawin -in "$f.manifest" -sigfile "$f.manifest.sig"
             rm "$f.manifest"

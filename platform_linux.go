@@ -27,10 +27,16 @@ static void skip_taskbar(void *win) {
 import "C"
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -125,4 +131,61 @@ func flatpakAutostart(on bool) error {
 			return errors.New("background portal did not answer")
 		}
 	}
+}
+
+// installedBy names the package format that owns our binary, "deb" or "rpm", so an update can
+// go through its package manager. "" for anything else, e.g. the AUR's package (pacman's job).
+func installedBy() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if exec.CommandContext(ctx, "dpkg", "-S", exe).Run() == nil { //nolint:gosec // G204: our own path
+		return "deb"
+	}
+	if exec.CommandContext(ctx, "rpm", "-qf", exe).Run() == nil { //nolint:gosec // G204: our own path
+		return "rpm"
+	}
+	return ""
+}
+
+// installPackage installs a verified package as root; pkexec asks for the password.
+func installPackage(ctx context.Context, kind, path string) error {
+	args := []string{"apt-get", "install", "-y", path}
+	if kind == "rpm" {
+		args = []string{"dnf", "install", "-y", path}
+		if dnf, _ := exec.LookPath("dnf"); dnf == "" {
+			// openSUSE; our RPMs carry no GPG signature, the manifest signature vouches for them.
+			args = []string{"zypper", "--non-interactive", "install", "--allow-unsigned-rpm", path}
+		}
+	}
+	out, err := exec.CommandContext(ctx, "pkexec", args...).CombinedOutput() //nolint:gosec // G204: fixed commands, path from downloadPackage
+	var exit *exec.ExitError
+	// 126: the password dialog was dismissed; 127: not authorized, which KDE's agent also
+	// returns for a dismissed dialog. Either way the user knows, a failure toast wouldn't help.
+	if errors.As(err, &exit) && (exit.ExitCode() == 126 || exit.ExitCode() == 127) {
+		log.Printf("update: pkexec %s: %s", args[0], strings.TrimSpace(string(out)))
+		return errCancelled
+	}
+	if err != nil {
+		return fmt.Errorf("pkexec %s: %w: %s", args[0], err, out)
+	}
+	return nil
+}
+
+// relaunch starts the updated binary once this process has exited, so two copies never run.
+func relaunch() error {
+	exe, err := os.Executable() // Go drops the " (deleted)" the replaced binary now has
+	if err != nil {
+		return err
+	}
+	cmd := exec.CommandContext(context.Background(), "sh", "-c", `while kill -0 "$0" 2>/dev/null; do sleep 0.2; done; exec "$1"`,
+		strconv.Itoa(os.Getpid()), exe) //nolint:gosec // G204: our own pid and path
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Process.Release()
 }

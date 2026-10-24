@@ -76,7 +76,8 @@ Git), or an own client entered in Settings.
 - Values inserted into HTML are escaped with `esc()`; translations are inserted as is.
 - Updates are verified against `SHA256SUMS` and Ed25519 signatures (`signing.go`): `<asset>.sig`
   over the hash, and `<asset>.manifest.sig` over `updateManifest` (version, OS, arch, asset,
-  hash), which release.yml must produce byte for byte.
+  hash), which release.yml must produce byte for byte. A `.deb` / `.rpm` install updates through
+  pkexec only after its own manifest signature checks out (`downloadPackage`).
 - Disconnecting revokes at Google before deleting the token; a failed revoke keeps the token
   and the account (`revokeError`) until the user retries or removes it locally.
 - A change to what data the app accesses, stores or sends (scopes, config fields, network

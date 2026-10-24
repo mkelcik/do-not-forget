@@ -149,6 +149,7 @@
   "update.action": "Update",
   "update.body_install": "Update installs the new version and restarts the app.",
   "update.body_download": "Update opens the download page for the new version.",
+  "update.body_package": "Update asks for your password, installs the new version and restarts the app.",
   "update.failed_title": "Update failed",
   "update.failed_body": "I'll try again at the next check. Details are in the log.",
 
