@@ -30,6 +30,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"reflect"
@@ -162,7 +163,10 @@ func installPackage(ctx context.Context, kind, path string) error {
 	}
 	out, err := exec.CommandContext(ctx, "pkexec", args...).CombinedOutput() //nolint:gosec // G204: fixed commands, path from downloadPackage
 	var exit *exec.ExitError
-	if errors.As(err, &exit) && exit.ExitCode() == 126 { // the password dialog was dismissed
+	// 126: the password dialog was dismissed; 127: not authorized, which KDE's agent also
+	// returns for a dismissed dialog. Either way the user knows, a failure toast wouldn't help.
+	if errors.As(err, &exit) && (exit.ExitCode() == 126 || exit.ExitCode() == 127) {
+		log.Printf("update: pkexec %s: %s", args[0], strings.TrimSpace(string(out)))
 		return errCancelled
 	}
 	if err != nil {
