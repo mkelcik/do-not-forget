@@ -5,11 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-24
+
 ### Changed
 
 - A `.deb` or `.rpm` install updates from the app: Update downloads and verifies the new
   package, installs it after asking for your password and restarts. It used to open the
-  download page.
+  download page. This works from 0.11.1 on, so install this version by hand once.
 
 ## [0.11.0] - 2026-10-23
 
@@ -130,7 +132,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/mkelcik/do-not-forget/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/mkelcik/do-not-forget/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mkelcik/do-not-forget/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/mkelcik/do-not-forget/compare/v0.8.4...v0.9.0
