@@ -139,6 +139,11 @@
   "settings.sync_every": "Synchronizovat každých",
   "settings.version": "verze {{version}}",
   "settings.update": "Aktualizovat na {{version}}",
+  "settings.check_updates": "Zkontrolovat aktualizace",
+  "settings.checking": "Kontroluji…",
+  "settings.up_to_date": "Máš nejnovější verzi",
+  "settings.check_failed": "Aktualizace se nepodařilo zkontrolovat",
+  "settings.check_updating": "Aktualizace se právě instaluje",
 
   "alert.starting": "Schůzka začíná",
   "alert.started": "Schůzka začala před {{m}} min",

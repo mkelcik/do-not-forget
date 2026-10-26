@@ -310,6 +310,7 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
 
     <div class="about"><b>Do Not Forget</b><br><span id="version"></span><br>
       <button class="link-btn" id="update" hidden></button><br id="update-br" hidden>
+      <button class="link-btn" id="check-update" hidden></button> <span id="check-status"></span><br id="check-br" hidden>
       <button class="link-btn" data-url="https://github.com/mkelcik/do-not-forget">github.com/mkelcik/do-not-forget</button></div>
   </div>
 </section>
@@ -496,6 +497,19 @@ function renderRulesTab() {
   if (tab.hidden && day === -1) document.querySelector('.tabs button[data-day="0"]').click();
 }
 
+// Settings › About › Check for updates. A newer version arrives as i18n.update (the Update
+// button above); the result says how a check without one ended.
+let checkState = ""; // "" | checking | latest | failed | updating | found
+function renderCheck() {
+  const btn = document.getElementById("check-update");
+  btn.hidden = document.getElementById("check-br").hidden = !i18n.canCheck;
+  btn.disabled = checkState === "checking";
+  btn.textContent = t(checkState === "checking" ? "settings.checking" : "settings.check_updates");
+  const msg = { latest: "settings.up_to_date", failed: "settings.check_failed", updating: "settings.check_updating" }[checkState];
+  document.getElementById("check-status").textContent = msg && !i18n.update ? "· " + t(msg) : "";
+}
+Events.On("update:checked", ({ data }) => { checkState = data; renderCheck(); });
+
 // Settings › Accounts, from the backend's "accounts" event.
 let accounts = { accounts: [], google: false, adding: false, error: "", removing: [] };
 // Accounts that need signing in again, above the agenda: their events are missing from it.
@@ -594,6 +608,7 @@ function fillSettings() {
   upd.hidden = document.getElementById("update-br").hidden = !i18n.update;
   upd.textContent = i18n.update ? t("settings.update", { version: i18n.update }) : "";
   document.getElementById("open-settings").classList.toggle("badge", !!i18n.update);
+  renderCheck();
   document.getElementById("native-apps-opt").hidden = i18n.flatpak;
   document.getElementById("tray-style-opt").hidden = i18n.platform !== "darwin"; // other trays take no text
   document.querySelectorAll("#tray-style button").forEach((b) => b.classList.toggle("on", b.dataset.style === i18n.trayStyle));
@@ -624,6 +639,7 @@ document.addEventListener("click", (ev) => {
   const reconnect = t.closest("[data-reconnect]");
   if (reconnect) return Events.Emit("account:add", reconnect.dataset.reconnect); // signs in as that account
   if (t.closest("#update")) return Events.Emit("update:install");
+  if (t.closest("#check-update")) { checkState = "checking"; renderCheck(); return Events.Emit("update:check"); }
   const bell = t.closest("[data-bell]");
   if (bell) return Events.Emit("calendar:toggle", { email: bell.dataset.email, id: bell.dataset.bell, on: bell.dataset.on !== "true", remind: true });
   const unrule = t.closest("[data-unrule]");

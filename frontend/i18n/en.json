@@ -135,6 +135,11 @@
   "settings.sync_every": "Sync every",
   "settings.version": "version {{version}}",
   "settings.update": "Update to {{version}}",
+  "settings.check_updates": "Check for updates",
+  "settings.checking": "Checking…",
+  "settings.up_to_date": "You have the latest version",
+  "settings.check_failed": "Couldn't check for updates",
+  "settings.check_updating": "An update is being installed",
 
   "alert.starting": "Meeting starting",
   "alert.started": "Meeting started {{m}} min ago",

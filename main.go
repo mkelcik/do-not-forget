@@ -126,7 +126,8 @@ func main() {
 
 	tray := app.SystemTray.New()
 	var emitAccounts func()
-	var sendLanguage func() // settings and translations to every window; defined with the language below
+	var sendLanguage func()                // settings and translations to every window; defined with the language below
+	var checkUpdate func() (string, error) // Settings' "Check for updates"; nil without an updater
 	var dummy Source
 	if *dummyPath != "" {
 		dummy = &dummySource{path: *dummyPath, base: time.Now()}
@@ -810,7 +811,7 @@ func main() {
 		t := tr.Load()
 		app.Event.Emit("i18n", map[string]any{
 			"lang": t.code, "strings": t.strings, "languages": langs.languages(), "setting": setting,
-			"version": version, "update": update, // for Settings › About
+			"version": version, "update": update, "canCheck": checkUpdate != nil, // for Settings › About
 			// Settings › Menu bar, offered on macOS only.
 			"trayStyle": trayStyle, "trayTitleMax": trayTitleMax, "platform": runtime.GOOS,
 			"settings": settings, "autostart": autostart, "autostartError": autostartErr,
@@ -902,7 +903,7 @@ func main() {
 		}
 	})
 
-	startUpdater(app, notifier, func() bool {
+	checkUpdate = startUpdater(app, notifier, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
 		return cfg.mutedAt(time.Now())
@@ -916,6 +917,20 @@ func main() {
 		}
 	})
 	app.Event.On("update:install", func(*application.CustomEvent) { go installUpdate(app, notifier) })
+	// Settings › About › Check for updates. A newer version shows up through available (above)
+	// as the Update button; this only tells the page how the check ended.
+	app.Event.On("update:check", func(*application.CustomEvent) {
+		if checkUpdate == nil {
+			return
+		}
+		go func() {
+			v, err := checkUpdate()
+			if err != nil {
+				log.Printf("update check: %v", err)
+			}
+			app.Event.Emit("update:checked", checkResult(v, err))
+		}()
+	})
 
 	// macOS drops notifications from an app that never asked; ask once it's running (the
 	// system prompts only the first time).
