@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -85,6 +87,23 @@ func TestDownloadPackage(t *testing.T) {
 				t.Errorf("%s: downloaded %q", name, b)
 			}
 			_ = os.Remove(path)
+		}
+	}
+}
+
+func TestCheckResult(t *testing.T) {
+	for _, c := range []struct {
+		newer string
+		err   error
+		want  string
+	}{
+		{"", nil, "latest"},
+		{"0.13.0", nil, "found"},
+		{"", errors.New("offline"), "failed"},
+		{"", fmt.Errorf("check: %w", errUpdating), "updating"},
+	} {
+		if got := checkResult(c.newer, c.err); got != c.want {
+			t.Errorf("checkResult(%q, %v) = %q, want %q", c.newer, c.err, got, c.want)
 		}
 	}
 }

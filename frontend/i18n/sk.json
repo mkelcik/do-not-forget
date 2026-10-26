@@ -139,6 +139,11 @@
   "settings.sync_every": "Synchronizovať každých",
   "settings.version": "verzia {{version}}",
   "settings.update": "Aktualizovať na {{version}}",
+  "settings.check_updates": "Skontrolovať aktualizácie",
+  "settings.checking": "Kontrolujem…",
+  "settings.up_to_date": "Máš najnovšiu verziu",
+  "settings.check_failed": "Aktualizácie sa nepodarilo skontrolovať",
+  "settings.check_updating": "Aktualizácia sa práve inštaluje",
 
   "alert.starting": "Meeting začína",
   "alert.started": "Meeting začal pred {{m}} min",

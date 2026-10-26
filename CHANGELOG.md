@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- "Check for updates" in Settings › About checks GitHub Releases right away instead of waiting
+  for the next check (every 6 hours) and says whether you have the latest version.
+
 ## [0.12.0] - 2026-10-26
 
 ### Added

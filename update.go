@@ -37,9 +37,12 @@ const (
 // + Ed25519 signature, see signing.go) and restarts. The notification repeats every check
 // until updated, and waits out a mute. Dev builds never check, so `go run` can't get replaced
 // by a release binary. Flatpak updates the Flatpak.
-func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool, available func(version string)) {
+//
+// It returns check, for Settings' "Check for updates": the newer version or "", without a
+// notification since Settings shows the result. nil when there's no updater.
+func startUpdater(app *application.App, notifier *notifications.NotificationService, muted func() bool, available func(version string)) (check func() (string, error)) {
 	if version == "dev" || flatpakID != "" {
-		return
+		return nil
 	}
 	gh, err := github.New(github.Config{Repository: repo, ChecksumAsset: "SHA256SUMS"})
 	if err == nil {
@@ -51,28 +54,35 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 	}
 	if err != nil {
 		log.Printf("updater: %v", err)
-		return
+		return nil
+	}
+	var checking sync.Mutex // the periodic check and the button take turns
+	check = func() (string, error) {
+		checking.Lock()
+		defer checking.Unlock()
+		switch app.Updater.State() {
+		case updater.StateDownloading, updater.StateVerifying, updater.StateInstalling, updater.StateReady:
+			return "", errUpdating // a Check now would clobber the install's state
+		default:
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute) // a stalled request must not hang
+		defer cancel()
+		rel, err := app.Updater.Check(ctx)
+		if err != nil || rel == nil {
+			return "", err
+		}
+		offered.Store(rel.Version)
+		available(rel.Version)
+		return rel.Version, nil
 	}
 	go func() {
 		for time.Sleep(time.Minute); ; time.Sleep(6 * time.Hour) {
-			switch app.Updater.State() {
-			case updater.StateDownloading, updater.StateVerifying, updater.StateInstalling, updater.StateReady:
-				continue // an install is in flight; a Check now would clobber its state
-			default:
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute) // a stalled request must not stop the loop
-			rel, err := app.Updater.Check(ctx)
-			cancel()
+			v, err := check()
 			if err != nil {
 				log.Printf("update check: %v", err)
 				continue
 			}
-			if rel == nil {
-				continue
-			}
-			offered.Store(rel.Version)
-			available(rel.Version)
-			if muted() {
+			if v == "" || muted() {
 				continue
 			}
 			body := T("update.body_install")
@@ -84,7 +94,7 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			}
 			if err := notifier.SendNotificationWithActions(notifications.NotificationOptions{
 				ID:         "update",
-				Title:      T("update.title", "version", rel.Version),
+				Title:      T("update.title", "version", v),
 				Body:       body,
 				CategoryID: "update",
 				Data:       map[string]any{"kind": "update"},
@@ -93,6 +103,24 @@ func startUpdater(app *application.App, notifier *notifications.NotificationServ
 			}
 		}
 	}()
+	return check
+}
+
+// errUpdating: an update is being installed, so there's nothing to check.
+var errUpdating = errors.New("an update is being installed")
+
+// checkResult is how a check from Settings ended, as the page shows it: found (the Update
+// button appears), latest, updating or failed.
+func checkResult(newer string, err error) string {
+	switch {
+	case errors.Is(err, errUpdating):
+		return "updating"
+	case err != nil:
+		return "failed"
+	case newer != "":
+		return "found"
+	}
+	return "latest"
 }
 
 var installing sync.Mutex
