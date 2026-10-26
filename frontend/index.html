@@ -49,6 +49,12 @@ header small { color: var(--muted); display: block; font-size: 12px; }
 .tabs { display: flex; margin: 0 12px; background: var(--line); border-radius: 8px; padding: 2px; }
 .tabs button { flex: 1; padding: 4px; border-radius: 6px; font-size: 12px; color: var(--muted); }
 .tabs button[hidden] { display: none; }
+.tabs button.icon { flex: none; padding: 4px 10px; } /* muted and hidden events: only there when there are some */
+.rule { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
+.rule:hover { background: var(--card); }
+.rule .body { flex: 1; min-width: 0; }
+.rule .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rule small { display: block; color: var(--muted); font-size: 11px; }
 .day-head { position: sticky; top: -8px; z-index: 1; background: var(--bg); padding: 10px 4px 4px;
   font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .day-head:first-child { padding-top: 2px; }
@@ -180,7 +186,6 @@ body.settings-open #settings { display: flex; }
 .bell { font-size: 13px; padding: 0 4px; border-radius: 6px; flex: none; }
 .bell:hover { background: var(--line); }
 .bell.off { opacity: .5; }
-#rules[hidden], #rules-head[hidden] { display: none; }
 .add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
 .providers { display: none; padding: 4px 8px 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
 .providers.show { display: grid; }
@@ -236,7 +241,7 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
 </header>
 <section id="signin"></section>
 <section id="hero"></section>
-<nav class="tabs"><button data-day="0" class="on" data-i18n="day.today"></button><button data-day="1" data-i18n="day.tomorrow"></button><button data-day="7" id="week-tab" data-i18n="tab.week"></button></nav>
+<nav class="tabs"><button data-day="0" class="on" data-i18n="day.today"></button><button data-day="1" data-i18n="day.tomorrow"></button><button data-day="7" id="week-tab" data-i18n="tab.week"></button><button data-day="-1" id="rules-tab" class="icon" data-i18n-title="rules.title" hidden>🔕</button></nav>
 <main id="list"></main>
 <footer>
   <span id="sync"></span>
@@ -285,8 +290,6 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
       <div class="opt"><span><span data-i18n="settings.only_accepted"></span><small data-i18n="settings.only_accepted_desc"></small></span><span class="switch" data-setting="onlyAccepted"></span></div>
       <div class="opt"><span><span data-i18n="settings.only_others"></span><small data-i18n="settings.only_others_desc"></small></span><span class="switch" data-setting="onlyWithOthers"></span></div>
     </div>
-    <h2 id="rules-head" data-i18n="settings.event_rules" hidden></h2>
-    <div class="group" id="rules" hidden></div>
 
     <h2 data-i18n="settings.appearance"></h2>
     <div class="group">
@@ -375,6 +378,8 @@ function render() {
   let html;
   if (!sources) {
     html = `<div class="empty">${t("list.no_calendars")}<br><button class="link-btn" id="connect">${t("list.connect")}</button></div>`;
+  } else if (day === -1) {
+    html = rulesHTML();
   } else if (day === 7) {
     html = [...Array(7).keys()].map((n) => { const h = dayHTML(n, now); return h && `<div class="day-head">${dayName(n)}</div>${h}`; })
       .join("") || `<div class="empty">${t("list.free_week")}</div>`;
@@ -478,13 +483,17 @@ function setRule(e, hide, series) {
   render();
 }
 
-// Settings › Muted and hidden events, each with Undo.
-function renderRules() {
-  const rules = i18n.settings.eventRules || [];
-  const box = document.getElementById("rules");
-  box.hidden = document.getElementById("rules-head").hidden = !rules.length;
-  box.innerHTML = rules.map((r) => `<div class="opt"><span>${esc(r.title)}<small>${t(r.hide ? "settings.rule_hidden" : "event.muted")}${
-    r.until ? "" : " · " + t("settings.rule_series")}</small></span><button class="link-btn" data-unrule="${esc(r.id)}">${t("settings.rule_undo")}</button></div>`).join("");
+// The 🔕 tab: muted and hidden events, each with Undo. Kept out of Settings, where a long list
+// would bury the options. The tab is there only while there's something in it.
+function rulesHTML() {
+  return (i18n.settings.eventRules || []).map((r) => `<div class="rule"><div class="body"><div class="name">${esc(r.title)}</div>
+    <small>${t(r.hide ? "rules.hidden" : "event.muted")}${r.until ? "" : " · " + t("rules.series")}</small></div>
+    <button class="link-btn" data-unrule="${esc(r.id)}">${t("rules.undo")}</button></div>`).join("");
+}
+function renderRulesTab() {
+  const tab = document.getElementById("rules-tab");
+  tab.hidden = !(i18n.settings.eventRules || []).length;
+  if (tab.hidden && day === -1) document.querySelector('.tabs button[data-day="0"]').click();
 }
 
 // Settings › Accounts, from the backend's "accounts" event.
@@ -560,7 +569,7 @@ document.getElementById("accounts").addEventListener("change", (ev) => {
 // Settings texts that need values: accounts, minute options, the language list.
 function fillSettings() {
   renderAccounts();
-  renderRules();
+  renderRulesTab();
   // Saved settings into the controls; options that need a switch that's off are dimmed.
   const s = i18n.settings;
   document.querySelectorAll("select[data-minutes]").forEach((sel) => {
