@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-10-26
+
 ### Added
 
 - Under each day the agenda says how many events you hid that day ("2 hidden events"); a click
@@ -158,7 +160,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/mkelcik/do-not-forget/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/mkelcik/do-not-forget/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/mkelcik/do-not-forget/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mkelcik/do-not-forget/compare/v0.11.0...v0.11.1
