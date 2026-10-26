@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-26
+
 ### Added
 
 - Snooze: the meeting-start alert has "Remind me in 1 min" and "in 5 min", and reminders have
@@ -144,7 +146,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/mkelcik/do-not-forget/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mkelcik/do-not-forget/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/mkelcik/do-not-forget/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/mkelcik/do-not-forget/compare/v0.9.0...v0.10.0
