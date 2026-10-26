@@ -113,18 +113,35 @@ func (c Config) fetchDays() int {
 func (c Config) applyRules(events []Event) []Event {
 	out := make([]Event, 0, len(events))
 	for _, e := range events {
-		hide := false
-		for _, r := range c.EventRules {
-			if r.ID == e.ID || (e.SeriesID != "" && r.ID == e.SeriesID) {
-				e.Muted = true
-				hide = hide || r.Hide
-			}
-		}
+		matched, hide := c.ruleFor(e)
+		e.Muted = e.Muted || matched
 		if !hide {
 			out = append(out, e)
 		}
 	}
 	return out
+}
+
+// hiddenStarts are the starts of the events the rules hide, so the agenda can say how many a
+// day leaves out.
+func (c Config) hiddenStarts(events []Event) []time.Time {
+	out := []time.Time{}
+	for _, e := range events {
+		if _, hide := c.ruleFor(e); hide {
+			out = append(out, e.Start)
+		}
+	}
+	return out
+}
+
+// ruleFor reports whether a rule covers e, as itself or its series, and whether one hides it.
+func (c Config) ruleFor(e Event) (matched, hide bool) {
+	for _, r := range c.EventRules {
+		if r.ID == e.ID || (e.SeriesID != "" && r.ID == e.SeriesID) {
+			matched, hide = true, hide || r.Hide
+		}
+	}
+	return matched, hide
 }
 
 // setRule adds or replaces the rule for r.ID.

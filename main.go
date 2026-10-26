@@ -287,13 +287,14 @@ func main() {
 				log.Printf("save config: %v", err)
 			}
 		}
+		hidden := cfg.hiddenStarts(evs)
 		evs = cfg.applyRules(evs)
 		events = evs
 		mu.Unlock()
 		if expired {
 			sendLanguage() // Settings lists the rules
 		}
-		app.Event.Emit("events", map[string]any{"events": evs, "synced": now, "sources": len(sources)})
+		app.Event.Emit("events", map[string]any{"events": evs, "hidden": hidden, "synced": now, "sources": len(sources)})
 		updateTray()
 		emitAccounts()
 	}

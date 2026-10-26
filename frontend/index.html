@@ -55,6 +55,8 @@ header small { color: var(--muted); display: block; font-size: 12px; }
 .rule .body { flex: 1; min-width: 0; }
 .rule .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rule small { display: block; color: var(--muted); font-size: 11px; }
+.hidden-note { display: block; margin: 4px 0 2px 60px; padding: 2px 6px; border-radius: 6px; font-size: 11px; color: var(--muted); }
+.hidden-note:hover { background: var(--card); color: var(--text); }
 .day-head { position: sticky; top: -8px; z-index: 1; background: var(--bg); padding: 10px 4px 4px;
   font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .day-head:first-child { padding-top: 2px; }
@@ -321,6 +323,7 @@ import { t, i18n, onLanguage, setLanguage, hm, dur, esc, joinLabel, openURL, lin
 
 // Filled by the Go side via the "events" event; dates arrive as RFC3339 strings.
 let events = [], synced = null, sources = 1;
+let hiddenStarts = []; // starts of the events hidden by the user, counted per day under the list
 const at = (day, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() + day); d.setHours(h, m, 0, 0); return d; };
 
 const hidden = new Set();
@@ -382,12 +385,18 @@ function render() {
   } else if (day === -1) {
     html = rulesHTML();
   } else if (day === 7) {
-    html = [...Array(7).keys()].map((n) => { const h = dayHTML(n, now); return h && `<div class="day-head">${dayName(n)}</div>${h}`; })
+    html = [...Array(7).keys()].map((n) => { const h = dayHTML(n, now) + hiddenNote(n); return h && `<div class="day-head">${dayName(n)}</div>${h}`; })
       .join("") || `<div class="empty">${t("list.free_week")}</div>`;
   } else {
-    html = dayHTML(day, now) || `<div class="empty">${t("list.free_day")}</div>`;
+    html = (dayHTML(day, now) || `<div class="empty">${t("list.free_day")}</div>`) + hiddenNote(day);
   }
   document.getElementById("list").innerHTML = html;
+}
+
+// "2 hidden events" under a day, so hiding doesn't make them easy to forget; opens the 🔕 tab.
+function hiddenNote(n) {
+  const count = hiddenStarts.filter((d) => sameDay(d, n)).length;
+  return count ? `<button class="hidden-note" data-show-rules>🔕 ${t("list.hidden", { count })}</button>` : "";
 }
 
 const dayName = (n) => n === 0 ? t("day.today") : n === 1 ? t("day.tomorrow")
@@ -479,7 +488,7 @@ function setRule(e, hide, series) {
   ruleAsk = null;
   // Optimistic; the refresh after the backend saved it confirms.
   const hit = (x) => x === e || (series && x.seriesId === e.seriesId);
-  if (hide) { events = events.filter((x) => !hit(x)); open = null; } else events.filter(hit).forEach((x) => { x.muted = true; });
+  if (hide) { hiddenStarts.push(...events.filter(hit).map((x) => x.start)); events = events.filter((x) => !hit(x)); open = null; } else events.filter(hit).forEach((x) => { x.muted = true; });
   Events.Emit("event:rule", { id: e.id, series, hide });
   render();
 }
@@ -639,6 +648,7 @@ document.addEventListener("click", (ev) => {
   const reconnect = t.closest("[data-reconnect]");
   if (reconnect) return Events.Emit("account:add", reconnect.dataset.reconnect); // signs in as that account
   if (t.closest("#update")) return Events.Emit("update:install");
+  if (t.closest("[data-show-rules]")) return document.getElementById("rules-tab").click();
   if (t.closest("#check-update")) { checkState = "checking"; renderCheck(); return Events.Emit("update:check"); }
   const bell = t.closest("[data-bell]");
   if (bell) return Events.Emit("calendar:toggle", { email: bell.dataset.email, id: bell.dataset.bell, on: bell.dataset.on !== "true", remind: true });
@@ -709,6 +719,7 @@ document.addEventListener("click", (ev) => {
 
 Events.On("events", ({ data }) => {
   events = (data.events ?? []).map((e) => ({ ...e, start: new Date(e.start), end: new Date(e.end) }));
+  hiddenStarts = (data.hidden ?? []).map((d) => new Date(d));
   synced = new Date(data.synced);
   sources = data.sources;
   render();

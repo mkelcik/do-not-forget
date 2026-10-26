@@ -144,3 +144,16 @@ func TestFetchDays(t *testing.T) {
 		t.Errorf("calendar reminders: %d days", d)
 	}
 }
+
+func TestHiddenStarts(t *testing.T) {
+	now := time.Date(2026, 10, 15, 12, 0, 0, 0, time.Local)
+	evs := []Event{{ID: "a", Start: now}, {ID: "b1", SeriesID: "b", Start: now.Add(time.Hour)}, {ID: "c", Start: now.Add(2 * time.Hour)}}
+	c := Config{EventRules: []EventRule{{ID: "a"}, {ID: "b", Hide: true}}}
+	got := c.hiddenStarts(evs)
+	if len(got) != 1 || !got[0].Equal(now.Add(time.Hour)) {
+		t.Errorf("hidden: %v", got)
+	}
+	if got := (Config{}).hiddenStarts(evs); got == nil || len(got) != 0 { // [] for the page, not null
+		t.Errorf("no rules: %v", got)
+	}
+}
