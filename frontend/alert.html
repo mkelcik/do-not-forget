@@ -122,6 +122,7 @@ function render() {
       <div class="actions">
         ${e.link ? `<button class="join" data-url="${esc(e.link)}" data-close>${joinLabel(e)}</button>` : ""}
         ${e.calendarUrl ? `<button class="ghost" data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : ""}
+        ${[1, 5].map((m) => `<button class="ghost" data-snooze="${m}">${t("snooze.in", { m })}</button>`).join("")}
         <button class="ghost" data-close>${t("alert.close")}</button>
       </div>
       ${e.link ? `<div class="linktext">${esc(e.link)}</div>` : ""}
@@ -145,6 +146,11 @@ document.addEventListener("click", (ev) => {
   if (rsvp.click(t)) return;
   const link = t.closest("[data-url]");
   if (link) openURL(link.dataset.url);
+  const snooze = t.closest("[data-snooze]");
+  if (snooze) {
+    Events.Emit("snooze", { ids: events.map((e) => e.id), minutes: +snooze.dataset.snooze });
+    Window.Hide();
+  }
   if (t.closest("[data-close]")) Window.Hide();
 });
 onLanguage(render);

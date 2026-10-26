@@ -313,6 +313,7 @@ type googleSource struct {
 	label     string            // the user's name for the account, shown for the primary calendar
 	names     map[string]string // the user's names for calendars, by ID
 	hidden    map[string]bool   // calendar IDs unticked in Settings
+	quiet     map[string]bool   // calendar IDs without reminders, set in Settings
 	calendars []Calendar        // from the last fetch, for Settings
 	err       error             // last fetch error, for Settings
 	closed    bool
@@ -325,6 +326,9 @@ type Calendar struct {
 	Default string `json:"default"` // without the user's name: the account label or Google's
 	Color   string `json:"color"`
 	On      bool   `json:"on"`
+	Remind  bool   `json:"remind"` // its events get reminders and the alert
+
+	reminders []int // the calendar's default reminder minutes, for events that use them
 }
 
 func newGoogleSource(email string, c oauthClient, tok *oauth2.Token, hidden []string) *googleSource {
@@ -341,7 +345,7 @@ func newGoogleSource(email string, c oauthClient, tok *oauth2.Token, hidden []st
 
 // brokenGoogleSource is an account whose token couldn't be loaded: listed with err, fetches nothing.
 func brokenGoogleSource(email string, err error) *googleSource {
-	g := &googleSource{email: email, hidden: map[string]bool{}, err: err}
+	g := &googleSource{email: email, hidden: map[string]bool{}, quiet: map[string]bool{}, err: err}
 	g.life, g.stop = context.WithCancel(context.Background())
 	return g
 }
@@ -415,6 +419,32 @@ func (g *googleSource) setHidden(id string, hidden bool) {
 	g.hidden[id] = hidden
 }
 
+// setQuiet switches a calendar's bell, also in the list Settings shows, which otherwise keeps
+// the old state until a fetch succeeds.
+func (g *googleSource) setQuiet(id string, quiet bool) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.quiet[id] = quiet
+	for i := range g.calendars {
+		if g.calendars[i].ID == id {
+			g.calendars[i].Remind = !quiet
+		}
+	}
+}
+
+// applyQuiet sets Muted on the account's events from the bells as they are now: a fetch that
+// started before a bell was switched comes back with the old state, and a switched bell should
+// hold right away, not from the next fetch.
+func (g *googleSource) applyQuiet(events []Event) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for i, e := range events {
+		if a, c, _, ok := splitGoogleEventID(e.ID); ok && a == g.email {
+			events[i].Muted = g.quiet[c]
+		}
+	}
+}
+
 // status is the account as Settings shows it.
 func (g *googleSource) status() (label string, cals []Calendar, errText string) {
 	g.mu.Lock()
@@ -484,6 +514,25 @@ type gCalendar struct {
 	BackgroundColor string `json:"backgroundColor"`
 	Primary         bool   `json:"primary"`
 	Selected        bool   `json:"selected"`
+	// DefaultReminders apply to the calendar's events that don't set their own.
+	DefaultReminders []gReminder `json:"defaultReminders"`
+}
+
+type gReminder struct {
+	Method  string `json:"method"` // popup | email
+	Minutes int    `json:"minutes"`
+}
+
+// popupMinutes are the reminders shown on screen; email ones aren't ours to repeat. Never nil:
+// Google always says which reminders an event has.
+func popupMinutes(rs []gReminder) []int {
+	out := []int{}
+	for _, r := range rs {
+		if r.Method == "popup" {
+			out = append(out, r.Minutes)
+		}
+	}
+	return out
 }
 
 func (g *googleSource) calendarList(ctx context.Context) ([]gCalendar, error) {
@@ -571,9 +620,10 @@ func (g *googleSource) events(ctx context.Context, from, to time.Time) ([]Event,
 		if own := g.names[c.ID]; own != "" {
 			shown = own
 		}
-		cals = append(cals, Calendar{ID: c.ID, Name: shown, Default: name, Color: c.BackgroundColor, On: !g.hidden[c.ID]})
+		cals = append(cals, Calendar{ID: c.ID, Name: shown, Default: name, Color: c.BackgroundColor, On: !g.hidden[c.ID],
+			Remind: !g.quiet[c.ID], reminders: popupMinutes(c.DefaultReminders)})
 	}
-	g.calendars = cals
+	g.calendars = slices.Clone(cals) // setQuiet changes Settings' copy while this fetch reads its own
 	g.mu.Unlock()
 
 	var out []Event
@@ -620,9 +670,13 @@ type gEvent struct {
 	Description      string `json:"description"`
 	HTMLLink         string `json:"htmlLink"`
 	HangoutLink      string `json:"hangoutLink"`
-	Start            gTime  `json:"start"`
-	End              gTime  `json:"end"`
-	Organizer        struct {
+	Reminders        struct {
+		UseDefault bool        `json:"useDefault"`
+		Overrides  []gReminder `json:"overrides"`
+	} `json:"reminders"`
+	Start     gTime `json:"start"`
+	End       gTime `json:"end"`
+	Organizer struct {
 		Email       string `json:"email"`
 		DisplayName string `json:"displayName"`
 		Self        bool   `json:"self"`
@@ -681,6 +735,11 @@ func (ge gEvent) event(account string, cal Calendar) (Event, bool) {
 		Description: htmlToText(ge.Description),
 		Organizer:   ge.Organizer.DisplayName,
 		CalendarURL: ge.HTMLLink,
+		Muted:       !cal.Remind,
+		Reminders:   popupMinutes(ge.Reminders.Overrides),
+	}
+	if ge.Reminders.UseDefault {
+		e.Reminders = cal.reminders
 	}
 	if ge.RecurringEventID != "" {
 		e.SeriesID = googleEventID(account, cal.ID, ge.RecurringEventID)
