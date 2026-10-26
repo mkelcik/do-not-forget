@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Under each day the agenda says how many events you hid that day ("2 hidden events"); a click
+  opens the 🔕 tab, where you can bring them back.
+
 ## [0.12.1] - 2026-10-26
 
 ### Added

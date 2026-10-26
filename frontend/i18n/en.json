@@ -31,6 +31,8 @@
   "list.no_calendars": "No calendar connected",
   "list.connect": "Connect a calendar",
   "list.conflict": "⚠ Conflict · {{from}} – {{to}}",
+  "list.hidden_one": "{{count}} hidden event",
+  "list.hidden_other": "{{count}} hidden events",
   "tag.pending": "Not answered",
   "tag.maybe": "Maybe",
 

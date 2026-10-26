@@ -34,6 +34,9 @@
   "list.no_calendars": "Žiadny kalendár nie je pripojený",
   "list.connect": "Pripojiť kalendár",
   "list.conflict": "⚠ Kolízia · {{from}} – {{to}}",
+  "list.hidden_one": "{{count}} skrytá udalosť",
+  "list.hidden_few": "{{count}} skryté udalosti",
+  "list.hidden_other": "{{count}} skrytých udalostí",
   "tag.pending": "Neodpovedané",
   "tag.maybe": "Možno",
 
