@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-26
+
 ### Added
 
 - "Check for updates" in Settings › About checks GitHub Releases right away instead of waiting
@@ -151,7 +153,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/mkelcik/do-not-forget/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/mkelcik/do-not-forget/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/mkelcik/do-not-forget/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/mkelcik/do-not-forget/compare/v0.10.0...v0.11.0
