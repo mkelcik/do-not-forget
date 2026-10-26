@@ -30,8 +30,9 @@ func TestGoogleEventMapping(t *testing.T) {
 			{"email": "room@resource.calendar.google.com", "resource": true, "responseStatus": "accepted"}],
 		"conferenceData": {"entryPoints": [
 			{"entryPointType": "phone", "uri": "tel:+421"},
-			{"entryPointType": "video", "uri": "https://meet.google.com/abc-defg-hij"}]}}`), &ge)
-	e, ok := ge.event("me@firma.sk", Calendar{ID: "me@firma.sk", Name: "Práca", Color: "#0a84ff"})
+			{"entryPointType": "video", "uri": "https://meet.google.com/abc-defg-hij"}]},
+		"reminders": {"useDefault": false, "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 15}]}}`), &ge)
+	e, ok := ge.event("me@firma.sk", Calendar{ID: "me@firma.sk", Name: "Práca", Color: "#0a84ff", Remind: true})
 	if !ok {
 		t.Fatal("event skipped")
 	}
@@ -53,6 +54,15 @@ func TestGoogleEventMapping(t *testing.T) {
 	}
 	if e.Description != "Agenda\n1. news & plans" {
 		t.Errorf("description: %q", e.Description)
+	}
+	if e.Muted || len(e.Reminders) != 1 || e.Reminders[0] != 15 { // email reminders aren't ours
+		t.Errorf("reminders: muted %v, %v", e.Muted, e.Reminders)
+	}
+	// The calendar's defaults, and its bell off in Settings.
+	ge.Reminders.UseDefault = true
+	e, _ = ge.event("me@firma.sk", Calendar{reminders: []int{10}})
+	if !e.Muted || len(e.Reminders) != 1 || e.Reminders[0] != 10 {
+		t.Errorf("default reminders: muted %v, %v", e.Muted, e.Reminders)
 	}
 
 	// All-day: dates at local midnight, end exclusive. No title, no guests, link in the location.
@@ -364,6 +374,64 @@ func TestNeedsSignIn(t *testing.T) {
 	} {
 		if got := brokenGoogleSource("me@x.sk", c.err).needsSignIn(); got != c.want {
 			t.Errorf("needsSignIn(%v) = %v, want %v", c.err, got, c.want)
+		}
+	}
+}
+
+func TestApplyQuiet(t *testing.T) {
+	g := brokenGoogleSource("me@x.sk", nil)
+	g.calendars = []Calendar{{ID: "work", Remind: true}, {ID: "home", Remind: true}}
+	evs := []Event{
+		{ID: googleEventID("me@x.sk", "work", "1")},
+		{ID: googleEventID("me@x.sk", "home", "2"), Muted: true}, // fetched before its bell went back on
+		{ID: googleEventID("other@x.sk", "work", "3")},
+		{ID: "dummy-0", Muted: true},
+	}
+	g.setQuiet("work", true)
+	g.setQuiet("home", false)
+	g.applyQuiet(evs)
+	if !evs[0].Muted || evs[1].Muted || evs[2].Muted || !evs[3].Muted {
+		t.Errorf("muted: %+v", evs)
+	}
+	if _, cals, _ := g.status(); cals[0].Remind || !cals[1].Remind { // Settings shows the bell as switched
+		t.Errorf("calendars: %+v", cals)
+	}
+}
+
+// A bell switched while a fetch is under way must not touch the calendars that fetch reads
+// (run with -race, as make ci does).
+func TestSetQuietDuringFetch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/users/me/calendarList" {
+			_, _ = io.WriteString(w, `{"items": [{"id": "work"}, {"id": "home"}]}`)
+			return
+		}
+		time.Sleep(20 * time.Millisecond) // the events request: time for the bell to switch
+		_, _ = io.WriteString(w, `{"items": []}`)
+	}))
+	defer srv.Close()
+	old := googleAPI
+	googleAPI = srv.URL
+	defer func() { googleAPI = old }()
+
+	g := brokenGoogleSource("me@x.sk", nil)
+	g.client = srv.Client()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range 3 {
+			if _, err := g.Events(context.Background(), time.Now(), time.Now().Add(time.Hour)); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+	for i := 0; ; i++ {
+		select {
+		case <-done:
+			return
+		default:
+			g.setQuiet("home", i%2 == 0)
+			time.Sleep(time.Millisecond)
 		}
 	}
 }

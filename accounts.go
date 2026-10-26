@@ -55,11 +55,11 @@ func (m *accountManager) connect(email string, c oauthClient, tok *oauth2.Token,
 	if clientID == googleClientID {
 		clientID = "" // the built-in one, whatever it is in a later build
 	}
-	label, names := "", map[string]string(nil)
+	label, names, quiet := "", map[string]string(nil), []string(nil)
 	m.saveConfig(func(cfg *Config) {
 		for i, a := range cfg.Accounts {
 			if a.Email == email {
-				hidden, label, names = a.Hidden, a.Label, a.Names
+				hidden, label, names, quiet = a.Hidden, a.Label, a.Names, a.Quiet
 				cfg.Accounts[i].ClientID = clientID
 				return
 			}
@@ -69,6 +69,9 @@ func (m *accountManager) connect(email string, c oauthClient, tok *oauth2.Token,
 	g := newGoogleSource(email, c, tok, hidden)
 	g.setLabel(label)
 	g.setNames(names)
+	for _, id := range quiet {
+		g.setQuiet(id, true)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if i := slices.IndexFunc(*m.list, func(a *googleSource) bool { return a.email == email }); i >= 0 {

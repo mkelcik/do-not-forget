@@ -30,6 +30,12 @@ type Event struct {
 	// SeriesID is the whole recurring series, in the same form as ID; empty for one-off events.
 	// Respond takes it in place of ID to answer the series; see answerSeries.
 	SeriesID string `json:"seriesId,omitempty"`
+	// Muted events show in the agenda but get no reminders or alert: their calendar is set so in
+	// Settings, or the user muted the event or its series (see EventRule).
+	Muted bool `json:"muted,omitempty"`
+	// Reminders are the event's own reminder times in minutes before the start, as the calendar
+	// has them; nil when the source doesn't say, empty when the event has none.
+	Reminders []int `json:"reminders,omitempty"`
 
 	src Source // which source produced it, so RSVPs go back to the right account
 }

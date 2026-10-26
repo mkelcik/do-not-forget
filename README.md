@@ -19,7 +19,10 @@ Website: <https://donotforget.dev/>
   their apps when installed.
 - **RSVP** (yes / maybe / no) without opening the calendar.
 - **Reminders** before a meeting, and a **maximised alert at the start** for when a notification goes unnoticed.
-- **Mute** reminders for an hour, the rest of the day, or until you turn them back on.
+- **Snooze** the alert or a reminder; **mute** reminders for an hour, the rest of the day, or until you
+  turn them back on; or mute or hide one event, a series or a whole calendar.
+- **Filters**: only meetings with a link, only accepted ones, only ones with other people; or the
+  reminder times set on each event in the calendar.
 - **Updates itself** from GitHub Releases, verified by checksum and signature.
 - **Translated**: English, Slovak and Czech so far; [add yours](CONTRIBUTING.md#translations).
 

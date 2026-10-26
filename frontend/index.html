@@ -74,6 +74,7 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .tag { font-size: 10px; font-weight: 600; padding: 0 5px; border-radius: 4px; margin-left: 4px; }
 .tag.pending { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
 .tag.maybe { color: var(--muted); background: var(--line); }
+.tag.muted { padding: 0; font-weight: 400; }
 .rsvp { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; width: fit-content; }
 .rsvp button { padding: 3px 12px; font-size: 12px; border-right: 1px solid var(--line); }
 .rsvp button:last-child { border-right: 0; }
@@ -176,6 +177,10 @@ body.settings-open #settings { display: flex; }
 .link-btn:hover { background: var(--line); }
 .cal { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 48px; font-size: 12px; }
 .cal .dot { width: 10px; height: 10px; }
+.bell { font-size: 13px; padding: 0 4px; border-radius: 6px; flex: none; }
+.bell:hover { background: var(--line); }
+.bell.off { opacity: .5; }
+#rules[hidden], #rules-head[hidden] { display: none; }
 .add { width: 100%; text-align: left; padding: 10px 12px; color: var(--accent); font-weight: 600; }
 .providers { display: none; padding: 4px 8px 8px; gap: 6px; grid-template-columns: 1fr 1fr; }
 .providers.show { display: grid; }
@@ -272,11 +277,16 @@ footer button.badge::after { content: ""; position: absolute; top: 3px; right: 4
     <div class="group">
       <div class="opt"><span data-i18n="settings.notify"></span><span class="switch" data-setting="notify"></span></div>
       <div class="opt" data-needs="notify"><span data-i18n="settings.notify_minutes"></span><select data-setting="notifyMinutes" data-minutes="1,5,10,15"></select></div>
+      <div class="opt" data-needs="notify"><span><span data-i18n="settings.calendar_reminders"></span><small data-i18n="settings.calendar_reminders_desc"></small></span><span class="switch" data-setting="calendarReminders"></span></div>
       <div class="opt" data-needs="notify"><span><span data-i18n="settings.notify_start"></span><small data-i18n="settings.notify_start_desc"></small></span><span class="switch" data-setting="notifyAtStart"></span></div>
       <div class="opt" data-needs="notify"><span data-i18n="settings.sound"></span><span class="switch" data-setting="sound"></span></div>
       <div class="opt"><span><span data-i18n="settings.fullscreen"></span><small data-i18n="settings.fullscreen_desc"></small></span><span class="switch" data-setting="fullscreenAlert"></span></div>
       <div class="opt"><span><span data-i18n="settings.only_links"></span><small data-i18n="settings.only_links_desc"></small></span><span class="switch" data-setting="onlyWithLink"></span></div>
+      <div class="opt"><span><span data-i18n="settings.only_accepted"></span><small data-i18n="settings.only_accepted_desc"></small></span><span class="switch" data-setting="onlyAccepted"></span></div>
+      <div class="opt"><span><span data-i18n="settings.only_others"></span><small data-i18n="settings.only_others_desc"></small></span><span class="switch" data-setting="onlyWithOthers"></span></div>
     </div>
+    <h2 id="rules-head" data-i18n="settings.event_rules" hidden></h2>
+    <div class="group" id="rules" hidden></div>
 
     <h2 data-i18n="settings.appearance"></h2>
     <div class="group">
@@ -414,10 +424,11 @@ function rowHTML(e) {
   const now = new Date();
   const tag = e.response === "pending" ? `<span class="tag pending">${t("tag.pending")}</span>`
     : e.response === "maybe" ? `<span class="tag maybe">${t("tag.maybe")}</span>` : "";
+  const muted = e.muted && e.end > now ? `<span class="tag muted" title="${esc(t("event.muted"))}">🔕</span>` : "";
   return `<div class="ev ${e.end < now ? "past" : ""} ${e.response ? "rsvp-" + e.response : ""}" data-id="${esc(e.id)}" style="--c:${e.color}">
       <div class="time">${hm(e.start)}<small>${hm(e.end)}</small></div>
       <div class="bar"></div>
-      <div class="body"><div class="name">${esc(e.title)}${tag}</div>
+      <div class="body"><div class="name">${esc(e.title)}${tag}${muted}</div>
         <div class="sub">${dur(e)} · ${esc(e.calendar)}${e.location ? " · " + esc(e.location) : ""}</div></div>
       ${e.link && e.end > now ? `<button class="cam" data-url="${esc(e.link)}">${esc(e.service || t("join"))}</button>` : ""}
     </div>`;
@@ -435,16 +446,45 @@ function description(e) {
 function detail(e) {
   const people = (e.attendees || []).map((p) =>
     `<span class="person ${esc(p.status)}"><b>${esc(initial(p.name))}</b>${esc(p.name || "")}</span>`).join("");
+  const rule = ruleFor(e);
   const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">${t("join")}</button>` : "") +
     (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : "");
+  // Muted by its calendar's bell rather than a rule: undone in Settings › Accounts, not here.
+  const manage = (rule && !rule.hide ? `<button data-unrule="${esc(rule.id)}">${t("event.unmute")}</button>`
+    : e.muted ? "" : `<button data-rule="mute" data-id="${esc(e.id)}">${t("event.mute")}</button>`) +
+    `<button data-rule="hide" data-id="${esc(e.id)}">${t("event.hide")}</button>`;
   const body = [
     e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
     e.description && `<div><div class="k">${t("detail.description")}</div>${description(e)}</div>`,
     e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp.html(e, "detail")}</div>`,
     people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
     actions && `<div class="actions">${actions}</div>`,
+    `<div class="actions">${manage}</div>`,
+    ruleAsk?.id === e.id && `<div class="scope"><button data-rule-scope="one">${t("rsvp.this")}</button>
+      <button data-rule-scope="all">${t("rsvp.all")}</button><button class="link-btn" data-rule-scope="">${t("rsvp.cancel")}</button></div>`,
   ].filter(Boolean).join("");
-  return body && `<div class="detail">${body}</div>`; // nothing to show → just the outlined row
+  return `<div class="detail">${body}</div>`;
+}
+
+// Muting or hiding an event: on a recurring one, first "this event" or "all events", like RSVP.
+const ruleFor = (e) => (i18n.settings.eventRules || []).find((r) => r.id === e.id || (e.seriesId && r.id === e.seriesId));
+let ruleAsk = null; // { id, hide }
+function setRule(e, hide, series) {
+  ruleAsk = null;
+  // Optimistic; the refresh after the backend saved it confirms.
+  const hit = (x) => x === e || (series && x.seriesId === e.seriesId);
+  if (hide) { events = events.filter((x) => !hit(x)); open = null; } else events.filter(hit).forEach((x) => { x.muted = true; });
+  Events.Emit("event:rule", { id: e.id, series, hide });
+  render();
+}
+
+// Settings › Muted and hidden events, each with Undo.
+function renderRules() {
+  const rules = i18n.settings.eventRules || [];
+  const box = document.getElementById("rules");
+  box.hidden = document.getElementById("rules-head").hidden = !rules.length;
+  box.innerHTML = rules.map((r) => `<div class="opt"><span>${esc(r.title)}<small>${t(r.hide ? "settings.rule_hidden" : "event.muted")}${
+    r.until ? "" : " · " + t("settings.rule_series")}</small></span><button class="link-btn" data-unrule="${esc(r.id)}">${t("settings.rule_undo")}</button></div>`).join("");
 }
 
 // Settings › Accounts, from the backend's "accounts" event.
@@ -478,6 +518,8 @@ function renderAccounts() {
       ${a.calendars.map((c) => `<div class="cal"><input type="checkbox" data-email="${esc(a.email)}" data-cal="${esc(c.id)}"
           aria-label="${esc(c.name)}" ${c.on ? "checked" : ""}>
         <span class="dot" style="background:${esc(c.color)}"></span>
+        <button class="bell ${c.remind ? "" : "off"}" data-email="${esc(a.email)}" data-bell="${esc(c.id)}" data-on="${c.remind}"
+          title="${esc(t("settings.calendar_remind"))}" aria-pressed="${c.remind}">${c.remind ? "🔔" : "🔕"}</button>
         <input class="cal-name" data-email="${esc(a.email)}" data-id="${esc(c.id)}" value="${c.name !== c.default ? esc(c.name) : ""}"
           placeholder="${esc(c.default)}" title="${esc(t("settings.calendar_rename"))}" maxlength="40"></div>`).join("")}
     </div>`).join("");
@@ -518,6 +560,7 @@ document.getElementById("accounts").addEventListener("change", (ev) => {
 // Settings texts that need values: accounts, minute options, the language list.
 function fillSettings() {
   renderAccounts();
+  renderRules();
   // Saved settings into the controls; options that need a switch that's off are dimmed.
   const s = i18n.settings;
   document.querySelectorAll("select[data-minutes]").forEach((sel) => {
@@ -572,6 +615,23 @@ document.addEventListener("click", (ev) => {
   const reconnect = t.closest("[data-reconnect]");
   if (reconnect) return Events.Emit("account:add", reconnect.dataset.reconnect); // signs in as that account
   if (t.closest("#update")) return Events.Emit("update:install");
+  const bell = t.closest("[data-bell]");
+  if (bell) return Events.Emit("calendar:toggle", { email: bell.dataset.email, id: bell.dataset.bell, on: bell.dataset.on !== "true", remind: true });
+  const unrule = t.closest("[data-unrule]");
+  if (unrule) return Events.Emit("event:unrule", unrule.dataset.unrule);
+  const ruleBtn = t.closest("[data-rule]");
+  if (ruleBtn) {
+    const e = events.find((x) => x.id === ruleBtn.dataset.id), hide = ruleBtn.dataset.rule === "hide";
+    if (e?.seriesId) { ruleAsk = { id: e.id, hide }; return render(); }
+    return e && setRule(e, hide, false);
+  }
+  const scope = t.closest("[data-rule-scope]");
+  if (scope) {
+    const e = ruleAsk && events.find((x) => x.id === ruleAsk.id);
+    if (e && scope.dataset.ruleScope) return setRule(e, ruleAsk.hide, scope.dataset.ruleScope === "all");
+    ruleAsk = null;
+    return render();
+  }
   if (t.closest("#client-save")) {
     const id = document.getElementById("client-id"), secret = document.getElementById("client-secret");
     Events.Emit("client:set", { id: id.value, secret: secret.value });
@@ -616,6 +676,7 @@ document.addEventListener("click", (ev) => {
   const row = t.closest(".ev");
   if (row) {
     if (rsvp.pick?.where === "detail") rsvp.pick = null; // collapsing or switching drops the question
+    ruleAsk = null;
     open = open === row.dataset.id ? null : row.dataset.id;
     render();
   }

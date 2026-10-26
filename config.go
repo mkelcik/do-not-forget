@@ -22,6 +22,13 @@ type Config struct {
 	FullscreenAlert bool `json:"fullscreenAlert"`
 	// OnlyWithLink limits reminders and the alert to meetings with a Meet, Zoom or Teams link.
 	OnlyWithLink bool `json:"onlyWithLink"`
+	// OnlyAccepted skips invitations I haven't answered or answered "maybe".
+	OnlyAccepted bool `json:"onlyAccepted"`
+	// OnlyWithOthers skips events with no one but me, such as blocked time.
+	OnlyWithOthers bool `json:"onlyWithOthers"`
+	// CalendarReminders reminds at the times each event has in its calendar instead of
+	// NotifyMinutes, which stays for events whose calendar doesn't say.
+	CalendarReminders bool `json:"calendarReminders"`
 	// Sound plays the system sound with notifications.
 	Sound bool `json:"sound"`
 	// NativeApps opens Zoom and Teams meetings in their desktop apps when installed.
@@ -51,6 +58,19 @@ type Config struct {
 	// GoogleClientID is the user's own OAuth client, used instead of the built-in one; its
 	// secret is in the keychain.
 	GoogleClientID string `json:"googleClientId,omitempty"`
+	// EventRules are events and series the user muted or hid.
+	EventRules []EventRule `json:"eventRules,omitempty"`
+}
+
+// EventRule mutes an event or a whole series (no reminders, no alert) or hides it from the
+// agenda as well.
+type EventRule struct {
+	ID    string `json:"id"`    // an event's ID, or a series' (Event.SeriesID)
+	Title string `json:"title"` // for Settings, where rules can be undone
+	Hide  bool   `json:"hide,omitempty"`
+	// Until is a one-off event's end, after which the rule has nothing left to do and is
+	// dropped; zero for a series.
+	Until time.Time `json:"until,omitzero"`
 }
 
 // Account is a connected Google account.
@@ -66,6 +86,8 @@ type Account struct {
 	ClientID string `json:"clientId,omitempty"`
 	// Hidden lists the IDs of calendars unticked in Settings; new calendars show up ticked.
 	Hidden []string `json:"hidden,omitempty"`
+	// Quiet lists the IDs of calendars whose events get no reminders or alert.
+	Quiet []string `json:"quiet,omitempty"`
 }
 
 func validTrayStyle(s string) bool { return s == "icon" || s == "text" || s == "both" }
@@ -76,6 +98,77 @@ func validTrayTitleMax(n int) bool { return n >= 10 && n <= 100 }
 var muteForever = time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func (c Config) mutedAt(now time.Time) bool { return now.Before(c.MutedUntil) }
+
+// fetchDays is how far ahead events are fetched: the 7-day tab, or with reminder times from the
+// calendar as far as Google lets a reminder be set (4 weeks), so those reminders come on time.
+func (c Config) fetchDays() int {
+	if c.CalendarReminders {
+		return 29
+	}
+	return 7
+}
+
+// applyRules drops hidden events and marks muted ones. An event can match a rule of its own and
+// one of its series; hiding wins, whichever came first.
+func (c Config) applyRules(events []Event) []Event {
+	out := make([]Event, 0, len(events))
+	for _, e := range events {
+		hide := false
+		for _, r := range c.EventRules {
+			if r.ID == e.ID || (e.SeriesID != "" && r.ID == e.SeriesID) {
+				e.Muted = true
+				hide = hide || r.Hide
+			}
+		}
+		if !hide {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// setRule adds or replaces the rule for r.ID.
+func (c *Config) setRule(r EventRule) {
+	c.dropRule(r.ID)
+	c.EventRules = append(c.EventRules, r)
+}
+
+// expireRules follows one-off rules' events in a fresh fetch: a rescheduled event's rule moves to
+// its new end, and rules of events that are over are dropped, so their titles don't stay in the
+// config. A rule whose event isn't in the fetch keeps its last known end. True if any changed.
+// ponytail: an event moved beyond the fetched 7 days, or in an account that failed to sync, isn't
+// seen, so its rule still expires at the old end.
+func (c *Config) expireRules(fetched []Event, now time.Time) bool {
+	changed := false
+	kept := c.EventRules[:0]
+	for _, r := range c.EventRules {
+		if !r.Until.IsZero() {
+			if j := slices.IndexFunc(fetched, func(e Event) bool { return e.ID == r.ID }); j >= 0 && !fetched[j].End.Equal(r.Until) {
+				r.Until, changed = fetched[j].End, true
+			}
+			if r.Until.Before(now) {
+				changed = true
+				continue
+			}
+		}
+		kept = append(kept, r)
+	}
+	c.EventRules = kept
+	return changed
+}
+
+func (c *Config) dropRule(id string) {
+	c.EventRules = slices.DeleteFunc(c.EventRules, func(r EventRule) bool { return r.ID == id })
+}
+
+// remindable are the events reminders and the alert are for, after the filters in Settings.
+func (c Config) remindable(events []Event) []Event {
+	return slices.DeleteFunc(slices.Clone(events), func(e Event) bool {
+		return e.Muted || (c.OnlyWithLink && e.Link == "") ||
+			(c.OnlyAccepted && (e.Response == "pending" || e.Response == "maybe")) ||
+			(c.OnlyWithOthers && !slices.ContainsFunc(e.Attendees, func(a Attendee) bool { return !a.Self }))
+	})
+}
 
 func configPath() string {
 	dir, err := os.UserConfigDir()
@@ -140,7 +233,9 @@ func (c Config) settings() map[string]any {
 	return map[string]any{
 		"notify": c.Notify, "notifyMinutes": c.NotifyMinutes, "notifyAtStart": c.NotifyAtStart,
 		"fullscreenAlert": c.FullscreenAlert, "onlyWithLink": c.OnlyWithLink, "sound": c.Sound, "nativeApps": c.NativeApps,
+		"onlyAccepted": c.OnlyAccepted, "onlyWithOthers": c.OnlyWithOthers, "calendarReminders": c.CalendarReminders,
 		"theme": c.Theme, "weekTab": c.WeekTab, "showDeclined": c.ShowDeclined, "syncMinutes": c.SyncMinutes,
+		"eventRules": append([]EventRule{}, c.EventRules...), // [] rather than null; Settings › Muted and hidden
 	}
 }
 
@@ -149,7 +244,8 @@ func (c *Config) set(key string, value json.RawMessage) error {
 	flags := map[string]*bool{
 		"notify": &c.Notify, "notifyAtStart": &c.NotifyAtStart, "fullscreenAlert": &c.FullscreenAlert,
 		"onlyWithLink": &c.OnlyWithLink, "sound": &c.Sound, "weekTab": &c.WeekTab, "showDeclined": &c.ShowDeclined,
-		"nativeApps": &c.NativeApps,
+		"nativeApps": &c.NativeApps, "onlyAccepted": &c.OnlyAccepted, "onlyWithOthers": &c.OnlyWithOthers,
+		"calendarReminders": &c.CalendarReminders,
 	}
 	if p, ok := flags[key]; ok {
 		return json.Unmarshal(value, p)

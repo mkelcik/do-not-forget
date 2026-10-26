@@ -65,7 +65,8 @@ func main() {
 	tr.Store(langs.translator(langs.resolve(append([]string{*forceLang, cfg.Language}, systemLanguages()...)...)))
 	var (
 		mu         sync.Mutex // guards cfg, events and accounts
-		events     []Event
+		events     []Event    // fetched, with the event rules applied
+		fetched    []Event    // fetched, before the rules, so a changed rule applies without a fetch
 		showWindow func()
 	)
 	// Change and write under one lock so concurrent saves can't interleave or lose a field.
@@ -125,6 +126,7 @@ func main() {
 
 	tray := app.SystemTray.New()
 	var emitAccounts func()
+	var sendLanguage func() // settings and translations to every window; defined with the language below
 	var dummy Source
 	if *dummyPath != "" {
 		dummy = &dummySource{path: *dummyPath, base: time.Now()}
@@ -174,6 +176,9 @@ func main() {
 		}
 		g.label = a.Label
 		g.setNames(a.Names)
+		for _, id := range a.Quiet {
+			g.setQuiet(id, true)
+		}
 		accounts = append(accounts, g)
 	}
 	adding, addErr := false, "" // Google sign-in in progress / its failure, guarded by mu
@@ -266,16 +271,39 @@ func main() {
 		for _, g := range accounts {
 			sources = append(sources, g)
 		}
+		days := cfg.fetchDays()
 		mu.Unlock()
-		evs := fetchAll(context.Background(), sources, today, today.AddDate(0, 0, 7)) // the 7-day tab
+		evs := fetchAll(context.Background(), sources, today, today.AddDate(0, 0, days))
 		mu.Lock()
+		for _, g := range accounts {
+			g.applyQuiet(evs)
+		}
+		fetched = evs
+		// Rules of events that are over go once a fetch shows they really are, also from the file.
+		expired := cfg.expireRules(evs, now)
+		if expired {
+			if err := cfg.save(); err != nil {
+				log.Printf("save config: %v", err)
+			}
+		}
+		evs = cfg.applyRules(evs)
 		events = evs
 		mu.Unlock()
+		if expired {
+			sendLanguage() // Settings lists the rules
+		}
 		app.Event.Emit("events", map[string]any{"events": evs, "synced": now, "sources": len(sources)})
 		updateTray()
 		emitAccounts()
 	}
 	app.Event.On("refresh", func(*application.CustomEvent) { go refresh() })
+	// reapplyRules puts a changed rule into effect on the events at hand, so a reminder due before
+	// the next fetch already follows it.
+	reapplyRules := func() {
+		mu.Lock()
+		events = cfg.applyRules(fetched)
+		mu.Unlock()
+	}
 	app.Event.On("accounts:get", func(*application.CustomEvent) { emitAccounts() })
 
 	// Connecting a Google account: browser sign-in, then the token into the keychain.
@@ -451,32 +479,83 @@ func main() {
 		mu.Unlock()
 		go refresh()
 	})
+	// A calendar's tick (shown in the agenda) and bell (reminders for its events), from Settings.
 	app.Event.On("calendar:toggle", func(ev *application.CustomEvent) {
 		var req struct {
 			Email, ID string
 			On        bool
+			Remind    bool // the bell rather than the tick
 		}
 		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
 			return
 		}
 		saveConfig(func(c *Config) {
 			for i, a := range c.Accounts {
-				if a.Email == req.Email {
-					a.Hidden = slices.DeleteFunc(a.Hidden, func(id string) bool { return id == req.ID })
-					if !req.On {
-						a.Hidden = append(a.Hidden, req.ID)
-					}
-					c.Accounts[i] = a
+				if a.Email != req.Email {
+					continue
+				}
+				list := &c.Accounts[i].Hidden
+				if req.Remind {
+					list = &c.Accounts[i].Quiet
+				}
+				*list = slices.DeleteFunc(*list, func(id string) bool { return id == req.ID })
+				if !req.On {
+					*list = append(*list, req.ID)
 				}
 			}
 		})
 		mu.Lock()
 		for _, g := range accounts {
-			if g.email == req.Email {
+			switch {
+			case g.email != req.Email:
+			case req.Remind:
+				g.setQuiet(req.ID, !req.On)
+			default:
 				g.setHidden(req.ID, !req.On)
 			}
 		}
+		if req.Remind {
+			for _, g := range accounts {
+				g.applyQuiet(fetched)
+			}
+			events = cfg.applyRules(fetched)
+		}
 		mu.Unlock()
+		go refresh()
+	})
+	// Muting or hiding an event or its series from the agenda, and undoing it from Settings.
+	app.Event.On("event:rule", func(ev *application.CustomEvent) {
+		var req struct {
+			ID           string
+			Series, Hide bool
+		}
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil {
+			return
+		}
+		mu.Lock()
+		i := slices.IndexFunc(events, func(e Event) bool { return e.ID == req.ID })
+		var e Event
+		if i >= 0 {
+			e = events[i]
+		}
+		mu.Unlock()
+		if i < 0 {
+			return
+		}
+		r := EventRule{ID: e.ID, Title: e.Title, Hide: req.Hide, Until: e.End}
+		if req.Series && e.SeriesID != "" {
+			r.ID, r.Until = e.SeriesID, time.Time{}
+		}
+		saveConfig(func(c *Config) { c.setRule(r) })
+		reapplyRules()
+		sendLanguage() // Settings lists the rules
+		go refresh()
+	})
+	app.Event.On("event:unrule", func(ev *application.CustomEvent) {
+		id, _ := ev.Data.(string)
+		saveConfig(func(c *Config) { c.dropRule(id) })
+		reapplyRules()
+		sendLanguage()
 		go refresh()
 	})
 	app.Event.On("respond", func(ev *application.CustomEvent) {
@@ -521,14 +600,26 @@ func main() {
 	})
 	// Notification buttons; re-registered when the language changes.
 	registerCategories := func() {
+		snooze := notifications.NotificationAction{ID: "snooze", Title: T("snooze.notification")}
 		_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
-			ID: "meeting", Actions: []notifications.NotificationAction{{ID: "join", Title: T("join")}},
+			ID: "meeting", Actions: []notifications.NotificationAction{{ID: "join", Title: T("join")}, snooze},
+		})
+		_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
+			ID: "reminder", Actions: []notifications.NotificationAction{snooze},
 		})
 		_ = notifier.RegisterNotificationCategory(notifications.NotificationCategory{
 			ID: "update", Actions: []notifications.NotificationAction{{ID: "update", Title: T("update.action")}},
 		})
 	}
 	registerCategories()
+	var snoozes []snoozed // guarded by mu
+	snooze := func(ids []string, d time.Duration, alert bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, id := range ids {
+			snoozes = append(snoozes, snoozed{id, time.Now().Add(d), alert})
+		}
+	}
 	notifier.OnNotificationResponse(func(r notifications.NotificationResult) {
 		if r.Error != nil {
 			return
@@ -541,6 +632,10 @@ func main() {
 		case "join":
 			if link, _ := r.Response.UserInfo["link"].(string); link != "" {
 				openURL(link)
+			}
+		case "snooze":
+			if id, _ := r.Response.UserInfo["id"].(string); id != "" {
+				snooze([]string{id}, 5*time.Minute, false)
 			}
 		}
 	})
@@ -562,23 +657,16 @@ func main() {
 		skipTaskbar(alertWin)
 	}
 	alerted := map[string]bool{}
-	alert := func() {
+	// dueAlerts are the meetings whose start alert is due; the ticker shows them.
+	dueAlerts := func() []Event {
 		mu.Lock()
+		defer mu.Unlock()
 		if !cfg.FullscreenAlert || cfg.mutedAt(time.Now()) {
-			mu.Unlock()
-			return
+			return nil
 		}
 		// The ticker runs every 10s, so "starting within 15s" fires once, right at the start;
 		// the 3 min grace still catches it after waking from sleep.
-		evs := events
-		if cfg.OnlyWithLink {
-			evs = withLink(evs)
-		}
-		due := dueNotifications(evs, time.Now(), 15*time.Second, 3*time.Minute, alerted)
-		mu.Unlock()
-		if len(due) > 0 {
-			showAlert(due)
-		}
+		return dueNotifications(cfg.remindable(events), time.Now(), 15*time.Second, 3*time.Minute, alerted)
 	}
 	if *previewAlert {
 		go func() {
@@ -592,6 +680,26 @@ func main() {
 		}()
 	}
 
+	// sendReminder shows a meeting reminder with Join (when there's a link) and Snooze.
+	sendReminder := func(e Event, id string, textAt time.Time) error {
+		mu.Lock()
+		silent := !cfg.Sound
+		mu.Unlock()
+		title, body := notificationText(e, textAt)
+		opts := notifications.NotificationOptions{ID: id, Title: title, Body: body, CategoryID: "reminder",
+			Data: map[string]any{"link": e.Link, "id": e.ID}}
+		if e.Link != "" {
+			opts.CategoryID = "meeting"
+		}
+		if silent {
+			opts.Sound = &notifications.NotificationSound{Silent: true}
+		}
+		err := notifier.SendNotificationWithActions(opts)
+		if err != nil {
+			log.Printf("notify %s: %v", id, err)
+		}
+		return err
+	}
 	sentAtStart := map[string]bool{} // "also at the start" notifications, guarded by mu
 	notify := func() {
 		now := time.Now()
@@ -600,34 +708,17 @@ func main() {
 			mu.Unlock()
 			return
 		}
-		evs := events
-		if cfg.OnlyWithLink {
-			evs = withLink(evs)
-		}
-		due := dueNotifications(evs, now, time.Duration(cfg.NotifyMinutes)*time.Minute, 0, sent)
+		evs := cfg.remindable(events)
+		due := dueReminders(evs, now, time.Duration(cfg.NotifyMinutes)*time.Minute, cfg.CalendarReminders, cfg.NotifyAtStart, sent)
 		var atStart []Event
 		if cfg.NotifyAtStart { // like the alert: once, right at the start, or soon after waking
 			atStart = dueNotifications(evs, now, 15*time.Second, 3*time.Minute, sentAtStart)
 		}
-		silent := !cfg.Sound
 		mu.Unlock()
 		send := func(e Event, id string, textAt time.Time, sentMap map[string]bool) {
-			title, body := notificationText(e, textAt)
-			opts := notifications.NotificationOptions{ID: id, Title: title, Body: body, Data: map[string]any{"link": e.Link}}
-			if silent {
-				opts.Sound = &notifications.NotificationSound{Silent: true}
-			}
-			var err error
-			if e.Link != "" {
-				opts.CategoryID = "meeting"
-				err = notifier.SendNotificationWithActions(opts)
-			} else {
-				err = notifier.SendNotification(opts)
-			}
-			if err != nil {
-				log.Printf("notify %s: %v", id, err)
+			if sendReminder(e, id, textAt) != nil {
 				mu.Lock()
-				delete(sentMap, sentKey(e)) // retry on the next tick
+				forgetSent(sentMap, e) // retry on the next tick
 				mu.Unlock()
 			}
 		}
@@ -638,6 +729,32 @@ func main() {
 			send(e, e.ID+"@start", e.Start, sentAtStart) // reads "in progress until …"
 		}
 	}
+	// wakeSnoozed sends the snoozed reminders that are due and returns the snoozed alerts, for
+	// the ticker to show together with the start alerts due at the same time.
+	wakeSnoozed := func() []Event {
+		now := time.Now()
+		mu.Lock()
+		var alerts, reminders []Event
+		snoozes, alerts, reminders = dueSnoozes(snoozes, cfg, events, now)
+		mu.Unlock()
+		for _, e := range reminders {
+			if sendReminder(e, e.ID+"@snooze", now) != nil {
+				snooze([]string{e.ID}, 0, false) // retry on the next tick
+			}
+		}
+		return alerts
+	}
+	// The alert's "Remind me in …"
+	app.Event.On("snooze", func(ev *application.CustomEvent) {
+		var req struct {
+			IDs     []string
+			Minutes int
+		}
+		if b, err := json.Marshal(ev.Data); err != nil || json.Unmarshal(b, &req) != nil || req.Minutes < 1 || req.Minutes > 60 {
+			return
+		}
+		snooze(req.IDs, time.Duration(req.Minutes)*time.Minute, true)
+	})
 
 	// Mute lives in the right-click menu; the icon gets a red slash while muted.
 	var applyMute func()
@@ -675,7 +792,7 @@ func main() {
 
 	// Language: the popup says hello with navigator.languages and can pick one in Settings.
 	// Switching swaps the translator and redraws everything that has text, no restart.
-	sendLanguage := func() {
+	sendLanguage = func() {
 		mu.Lock()
 		setting, trayStyle, trayTitleMax, update := cfg.Language, cfg.TrayStyle, cfg.TrayTitleMax, updateVersion
 		settings, failed, autostart := cfg.settings(), autostartFailed, cfg.FlatpakAutostart
@@ -831,7 +948,10 @@ func main() {
 			}
 			updateTray()
 			notify()
-			alert()
+			// One alert window: what's due now and what was snoozed until now show together.
+			if due := mergeAlerts(dueAlerts(), wakeSnoozed()); len(due) > 0 {
+				showAlert(due)
+			}
 		}
 	}()
 

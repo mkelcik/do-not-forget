@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Snooze: the meeting-start alert has "Remind me in 1 min" and "in 5 min", and reminders have
+  "Snooze 5 min". The meeting comes back unless it was declined or is over by then.
+- Mute or hide an event, or its whole series, from its details in the agenda. A muted event gets
+  no reminders or alert; a hidden one also leaves the agenda. Settings lists both, with Undo.
+- A bell next to each calendar in Settings turns reminders and the alert off for its events.
+- Reminder filters: only accepted meetings, only meetings with other people.
+- "Reminder times from the calendar": remind at the times set on each event in Google Calendar
+  (its own or the calendar's default notifications) instead of one time for every meeting.
+
 ## [0.11.1] - 2026-10-24
 
 ### Changed
