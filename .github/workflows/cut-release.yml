@@ -6,9 +6,10 @@ name: Cut release
 # the merge commit and starts release.yml on the tag.
 #
 # main's ruleset takes changes only through a PR with green checks, so the commit goes through
-# one. Two GITHUB_TOKEN limits shape the rest: its pushes and PRs start no workflows, so CI and
-# release.yml are dispatched by hand; and creating the PR needs Settings › Actions › General ›
-# "Allow GitHub Actions to create and approve pull requests".
+# one. GITHUB_TOKEN shapes the rest: creating the PR needs Settings › Actions › General ›
+# "Allow GitHub Actions to create and approve pull requests"; the PR's CI run waits for approval
+# (the bot counts as a first-time contributor), which this workflow gives; and a tag it pushes
+# starts no workflow, so release.yml is dispatched.
 on:
   workflow_dispatch:
     inputs:
@@ -100,14 +101,18 @@ jobs:
           git push -q origin "$branch"
           gh pr create --base main --head "$branch" --title "Release $VERSION" \
             --body "Moves [Unreleased] in CHANGELOG.md under $VERSION. Opened by the Cut release workflow, which merges it once CI passes."
-          gh workflow run ci.yml --ref "$branch"
       - name: Wait for CI
         run: |
           sha="$(git rev-parse HEAD)"
-          # The bot's PR also gets a pull_request run that waits for approval; watch the dispatched one.
+          # Only the PR's own run counts for its required checks; a dispatched run's checks don't.
+          run=""
           for _ in $(seq 30); do
-            run="$(gh run list --workflow ci.yml --commit "$sha" --event workflow_dispatch --json databaseId --jq '.[0].databaseId')"
-            [ -n "$run" ] && break
+            read -r run state < <(gh run list --workflow ci.yml --commit "$sha" --event pull_request \
+              --json databaseId,status,conclusion --jq '.[0] // empty | "\(.databaseId) \(if .conclusion != "" then .conclusion else .status end)"') || true
+            if [ "$state" = action_required ]; then
+              gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$run/approve"; break
+            fi
+            [ "$state" = in_progress ] && break
             sleep 10
           done
           test -n "$run" || { echo "::error::CI didn't start on $sha"; exit 1; }
@@ -116,7 +121,9 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh pr merge "release-$VERSION" --merge --delete-branch
+          # The PR's merge state can lag behind the finished checks for a few seconds.
+          for _ in 1 2 3 4 5; do gh pr merge "release-$VERSION" --merge --delete-branch && break; sleep 15; done
+          test "$(gh pr view "release-$VERSION" --json state --jq .state)" = MERGED
           merged="$(gh pr view "release-$VERSION" --json mergeCommit --jq .mergeCommit.oid)"
           git fetch -q origin main
           git tag "v$VERSION" "$merged"
