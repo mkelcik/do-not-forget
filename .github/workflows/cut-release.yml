@@ -1,0 +1,112 @@
+name: Cut release
+
+# One button for a release: Actions › Cut release › Run workflow (on main). It moves
+# [Unreleased] in CHANGELOG.md under the new version in a "Release X.Y.Z" PR, runs CI on it,
+# merges it, tags the merge commit and starts release.yml on the tag.
+#
+# main's ruleset takes changes only through a PR with green checks, so the commit goes through
+# one. Two GITHUB_TOKEN limits shape the rest: its pushes and PRs start no workflows, so CI and
+# release.yml are dispatched by hand; and creating the PR needs Settings › Actions › General ›
+# "Allow GitHub Actions to create and approve pull requests".
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Part of the last version to raise
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      version:
+        description: Exact version (X.Y.Z) instead of the bump
+        required: false
+      why:
+        description: Why this version, for the release commit's body
+        required: false
+
+concurrency: cut-release
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  cut:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          last="$(git tag --list 'v*' --sort=-v:refname | grep -ve - | head -1)"
+          last="${last#v}"
+          if [ -z "$VERSION" ]; then
+            IFS=. read -r major minor patch <<<"$last"
+            case "$BUMP" in
+              major) VERSION="$((major + 1)).0.0" ;;
+              minor) VERSION="$major.$((minor + 1)).0" ;;
+              *)     VERSION="$major.$minor.$((patch + 1))" ;;
+            esac
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version must be X.Y.Z, got '$VERSION'"; exit 1; }
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null ||
+            [ "$(printf '%s\n' "$last" "$VERSION" | sort -V | tail -1)" != "$VERSION" ]; then
+            echo "::error::$VERSION isn't newer than the last release $last"; exit 1
+          fi
+          echo "last=$last" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Changelog
+        env:
+          LAST: ${{ steps.version.outputs.last }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          notes="$(awk '/^## \[/ { p = ($0 == "## [Unreleased]"); next } p && NF' CHANGELOG.md)"
+          test -n "$notes" || { echo "::error::[Unreleased] in CHANGELOG.md is empty, nothing to release"; exit 1; }
+          sed -i -E "s/^## \[Unreleased\]$/&\n\n## [$VERSION] - $(date -u +%F)/;
+            s|^\[Unreleased\]: (.*/compare/)v$LAST\.\.\.HEAD$|[Unreleased]: \1v$VERSION...HEAD\n[$VERSION]: \1v$LAST...v$VERSION|" CHANGELOG.md
+          grep -qx "## \[$VERSION\] - .*" CHANGELOG.md && grep -q "^\[$VERSION\]: " CHANGELOG.md ||
+            { echo "::error::CHANGELOG.md doesn't have the expected [Unreleased] heading and link"; exit 1; }
+          git diff
+      - name: Release PR
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUMP: ${{ inputs.version && 'version' || inputs.bump }}
+          WHY: ${{ inputs.why }}
+        run: |
+          branch="release-$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -qam "Release $VERSION" -m "${WHY:-A $BUMP release, cut by the Cut release workflow.}"
+          git push -q origin "$branch"
+          gh pr create --base main --head "$branch" --title "Release $VERSION" \
+            --body "Moves [Unreleased] in CHANGELOG.md under $VERSION. Opened by the Cut release workflow, which merges it once CI passes."
+          gh workflow run ci.yml --ref "$branch"
+      - name: Wait for CI
+        run: |
+          sha="$(git rev-parse HEAD)"
+          for _ in $(seq 30); do
+            run="$(gh run list --workflow ci.yml --commit "$sha" --json databaseId --jq '.[0].databaseId')"
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          test -n "$run" || { echo "::error::CI didn't start on $sha"; exit 1; }
+          gh run watch "$run" --exit-status --interval 30
+      - name: Merge, tag and release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh pr merge "release-$VERSION" --merge --delete-branch
+          merged="$(gh pr view "release-$VERSION" --json mergeCommit --jq .mergeCommit.oid)"
+          git fetch -q origin main
+          git tag "v$VERSION" "$merged"
+          git push -q origin "v$VERSION"
+          gh workflow run release.yml --ref "v$VERSION"

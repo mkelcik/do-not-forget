@@ -49,6 +49,20 @@ make ci             # fmt-check, tidy-check, vet, lint, test (-race), govulnchec
 Google in dev builds needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env` (ignored by
 Git), or an own client entered in Settings.
 
+## Releasing
+
+User-facing changes add a line under `[Unreleased]` in `CHANGELOG.md` in their own PR. To
+release, run **Actions › Cut release** on `main` with a bump (patch / minor / major) or an exact
+version. It opens a "Release X.Y.Z" PR that moves `[Unreleased]` under the version, runs CI on
+it, merges it, tags the merge commit and starts `release.yml` on the tag. That builds, signs and
+publishes the release (notes: the version's changelog section plus the merged PRs) and updates
+Homebrew and the AUR. Flatpak metainfo and `PKGBUILD` get the version at build time; nothing
+else in the repository is bumped.
+
+It needs "Allow GitHub Actions to create and approve pull requests" (Settings › Actions ›
+General). If it stops before the merge, the PR stays open: fix it, merge, then push the tag by
+hand (`git tag vX.Y.Z <merge commit> && git push origin vX.Y.Z`).
+
 ## Conventions
 
 - Match the surrounding code: short doc comments that say *why*, no boilerplate.
