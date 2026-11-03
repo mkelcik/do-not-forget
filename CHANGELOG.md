@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-03
+
+### Changed
+
+- Show failed syncs above the agenda with a retry ([#33](https://github.com/mkelcik/do-not-forget/pull/33))
+- Add a workflow that cuts a release in one run ([#34](https://github.com/mkelcik/do-not-forget/pull/34))
+- List merged PRs when the changelog has nothing unreleased ([#35](https://github.com/mkelcik/do-not-forget/pull/35))
+
 ## [0.12.2] - 2026-10-26
 
 ### Added
@@ -160,7 +168,8 @@ First public release.
 - Disconnecting an account revokes its access at Google and deletes its tokens.
 - Links from event data open only as http(s), and meeting services are recognised by exact host.
 
-[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/mkelcik/do-not-forget/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/mkelcik/do-not-forget/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/mkelcik/do-not-forget/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/mkelcik/do-not-forget/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/mkelcik/do-not-forget/compare/v0.11.1...v0.12.0
