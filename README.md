@@ -104,9 +104,10 @@ GOOGLE_CLIENT_SECRET=GOCSPX-…
 `dummy.json` is a development event source: times are `"HH:MM"` (with `"day": 1` for tomorrow)
 or offsets from app start like `"+12m"`. `-preview-alert` shows the meeting-start alert right away.
 
-Releases: tag a commit on `main` (`git tag v0.1.0 && git push origin v0.1.0`); CI builds
-Linux, macOS and Windows archives plus Linux `.deb` and `.rpm` packages, publishes them with
-`SHA256SUMS` and updates the Homebrew cask and the AUR package.
+Releases: run the Cut release workflow (see [AGENTS.md](AGENTS.md#releasing)), or tag a commit
+on `main` (`git tag v0.1.0 && git push origin v0.1.0`); CI builds Linux, macOS and Windows
+archives plus Linux `.deb` and `.rpm` packages, publishes them with `SHA256SUMS` and updates the
+Homebrew cask and the AUR package.
 
 Built with Go and [Wails v3](https://v3alpha.wails.io/).
 

@@ -1,10 +1,12 @@
 name: Release
 
-# Push a tag like v1.2.3 on a commit that is on main:
+# Run cut-release.yml, or push a tag like v1.2.3 on a commit that is on main:
 #   git tag v1.2.3 && git push origin v1.2.3
+# cut-release.yml dispatches this on the tag: a tag pushed with GITHUB_TOKEN starts no workflow.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,6 +20,7 @@ jobs:
           fetch-depth: 0
       - name: Tag must point at a commit on main
         run: |
+          [[ "$GITHUB_REF" == refs/tags/v* ]] || { echo "::error::run this on a v* tag, not $GITHUB_REF"; exit 1; }
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
             echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
 
@@ -96,6 +99,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: dist
@@ -143,8 +147,10 @@ jobs:
         run: |
           prerelease=""
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease";; esac  # v1.2.3-rc1
+          # This version's CHANGELOG.md section, above GitHub's list of merged PRs.
+          notes="$(awk -v h="## [${GITHUB_REF_NAME#v}]" '/^## \[/ { p = (index($0, h) == 1); next } p' CHANGELOG.md)"
           gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
-            --title "$GITHUB_REF_NAME" --generate-notes --verify-tag $prerelease
+            --title "$GITHUB_REF_NAME" --notes "$notes" --generate-notes --verify-tag $prerelease
 
   # Bumps the cask in mkelcik/homebrew-tap to this release. Needs HOMEBREW_TAP_TOKEN: a
   # fine-grained token with Contents read & write on that repository only. Without it, or for a
