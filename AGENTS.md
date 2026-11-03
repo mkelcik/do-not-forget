@@ -51,7 +51,8 @@ Git), or an own client entered in Settings.
 
 ## Releasing
 
-User-facing changes add a line under `[Unreleased]` in `CHANGELOG.md` in their own PR. To
+User-facing changes may add a line under `[Unreleased]` in `CHANGELOG.md` in their own PR; if
+it's empty at release time, the release lists the titles of the PRs merged since the last one. To
 release, run **Actions › Cut release** on `main` with a bump (patch / minor / major) or an exact
 version. It opens a "Release X.Y.Z" PR that moves `[Unreleased]` under the version, runs CI on
 it, merges it, tags the merge commit and starts `release.yml` on the tag. That builds, signs and
