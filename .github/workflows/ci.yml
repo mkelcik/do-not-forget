@@ -5,7 +5,6 @@ on:
     branches: ["**"]
   pull_request:
   workflow_call: # the release workflow runs CI first
-  workflow_dispatch: # cut-release.yml runs it on its release PR, which GITHUB_TOKEN can't trigger
 
 permissions:
   contents: read
