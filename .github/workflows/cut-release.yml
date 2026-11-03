@@ -1,8 +1,9 @@
 name: Cut release
 
 # One button for a release: Actions › Cut release › Run workflow (on main). It moves
-# [Unreleased] in CHANGELOG.md under the new version in a "Release X.Y.Z" PR, runs CI on it,
-# merges it, tags the merge commit and starts release.yml on the tag.
+# [Unreleased] in CHANGELOG.md under the new version in a "Release X.Y.Z" PR (or, if it's
+# empty, the titles of the PRs merged since the last release), runs CI on it, merges it, tags
+# the merge commit and starts release.yml on the tag.
 #
 # main's ruleset takes changes only through a PR with green checks, so the commit goes through
 # one. Two GITHUB_TOKEN limits shape the rest: its pushes and PRs start no workflows, so CI and
@@ -69,7 +70,17 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           notes="$(awk '/^## \[/ { p = ($0 == "## [Unreleased]"); next } p && NF' CHANGELOG.md)"
-          test -n "$notes" || { echo "::error::[Unreleased] in CHANGELOG.md is empty, nothing to release"; exit 1; }
+          if [ -z "$notes" ]; then
+            # Nothing written by hand: list the PRs merged since the last release instead.
+            items="$(git log --first-parent --reverse --format=%H "v$LAST..HEAD" | while read -r c; do
+              gh api "repos/$GITHUB_REPOSITORY/commits/$c/pulls" \
+                --jq '.[0] | select(. != null and (.title | startswith("Release ") | not)) |
+                  "- \(.title) ([#\(.number)](\(.html_url)))"'
+            done)"
+            test -n "$items" || { echo "::error::no changes since v$LAST, nothing to release"; exit 1; }
+            ITEMS="$items" awk '{ print } $0 == "## [Unreleased]" { print "\n### Changed\n\n" ENVIRON["ITEMS"] }' \
+              CHANGELOG.md > CHANGELOG.new && mv CHANGELOG.new CHANGELOG.md
+          fi
           sed -i -E "s/^## \[Unreleased\]$/&\n\n## [$VERSION] - $(date -u +%F)/;
             s|^\[Unreleased\]: (.*/compare/)v$LAST\.\.\.HEAD$|[Unreleased]: \1v$VERSION...HEAD\n[$VERSION]: \1v$LAST...v$VERSION|" CHANGELOG.md
           grep -qx "## \[$VERSION\] - .*" CHANGELOG.md && grep -q "^\[$VERSION\]: " CHANGELOG.md ||
