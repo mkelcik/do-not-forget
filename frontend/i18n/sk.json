@@ -82,6 +82,8 @@
   "settings.signin_needed": "Prihlás sa znova, aby sa účet ďalej synchronizoval.",
   "settings.reconnect": "Pripojiť znova",
   "agenda.signin_needed": "{{account}} je odhlásený z Google, jeho udalosti chýbajú.",
+  "agenda.sync_failed": "{{account}} sa nepodarilo synchronizovať, jeho udalosti chýbajú.",
+  "agenda.retry": "Skúsiť znova",
   "settings.google_waiting": "Dokonči prihlásenie v prehliadači…",
   "settings.google_failed": "Nepodarilo sa pripojiť: {{error}}",
   "settings.google_unavailable": "Chýba Google client ID: pridaj vlastný nižšie",

@@ -521,11 +521,18 @@ Events.On("update:checked", ({ data }) => { checkState = data; renderCheck(); })
 
 // Settings › Accounts, from the backend's "accounts" event.
 let accounts = { accounts: [], google: false, adding: false, error: "", removing: [] };
-// Accounts that need signing in again, above the agenda: their events are missing from it.
+// Accounts that failed to sync, above the agenda: their events are missing from it, which an
+// empty day would otherwise hide. Signed out needs a new sign-in; anything else, another try.
 function renderSignIn() {
-  document.getElementById("signin").innerHTML = accounts.accounts.filter((a) => a.signIn).map((a) =>
-    `<div class="signin"><span>${t("agenda.signin_needed", { account: esc(a.label || a.email) })}</span>
-      <button class="link-btn" data-reconnect="${esc(a.email)}" ${accounts.adding ? "disabled" : ""}>${t("settings.reconnect")}</button></div>`).join("");
+  const removing = new Set(accounts.removing || []);
+  document.getElementById("signin").innerHTML = accounts.accounts.map((a) => {
+    const account = esc(a.label || a.email);
+    if (a.signIn) return `<div class="signin"><span>${t("agenda.signin_needed", { account })}</span>
+      <button class="link-btn" data-reconnect="${esc(a.email)}" ${accounts.adding ? "disabled" : ""}>${t("settings.reconnect")}</button></div>`;
+    if (!a.error || a.revokeFailed || removing.has(a.email)) return ""; // a disconnect's state, shown in Settings
+    return `<div class="signin"><span title="${esc(a.error)}">${t("agenda.sync_failed", { account })}</span>
+      <button class="link-btn" data-retry>${t("agenda.retry")}</button></div>`;
+  }).join("");
 }
 
 function renderAccounts() {
@@ -694,6 +701,8 @@ document.addEventListener("click", (ev) => {
   const link = t.closest("[data-url]");
   if (link) return openURL(link.dataset.url);
   if (t.closest("#refresh")) return Events.Emit("refresh");
+  const retry = t.closest("[data-retry]");
+  if (retry) { retry.disabled = true; return Events.Emit("refresh"); } // the next "accounts" redraws it
   const chip = t.closest(".chip");
   if (chip) { const c = chip.dataset.cal; hidden.has(c) ? hidden.delete(c) : hidden.add(c); return render(); }
   const tab = t.closest(".tabs button");
