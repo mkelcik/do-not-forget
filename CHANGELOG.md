@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A click on the tray icon closes the open popup on Windows instead of reopening it ([#38](https://github.com/mkelcik/do-not-forget/pull/38))
+
 ## [0.13.0] - 2026-11-03
 
 ### Changed

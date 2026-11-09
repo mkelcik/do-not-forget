@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -980,7 +981,18 @@ func main() {
 	}
 
 	tray.AttachWindow(window)
+	// On Windows, pressing the tray icon takes the focus first, so HideOnFocusLost has already
+	// hidden the popup when the click arrives, and the click would show it again: the icon could
+	// never close it. A click right after a focus loss closes. (Wails' own guard, justClosed, is
+	// never set in beta.30.)
+	var lostFocus atomic.Int64
+	window.OnWindowEvent(wevents.Common.WindowLostFocus, func(*application.WindowEvent) {
+		lostFocus.Store(time.Now().UnixNano())
+	})
 	tray.OnClick(func() {
+		if runtime.GOOS == "windows" && time.Since(time.Unix(0, lostFocus.Load())) < 500*time.Millisecond {
+			return
+		}
 		if window.IsVisible() {
 			window.Hide()
 			return
