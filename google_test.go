@@ -51,7 +51,7 @@ func TestGoogleEventMapping(t *testing.T) {
 		t.Errorf("link/response/organizer: %+v", e)
 	}
 	if len(e.Attendees) != 3 || e.Attendees[1].Name != "Eva" || e.Attendees[1].Status != "yes" ||
-		!e.Attendees[1].Optional || e.Attendees[1].Organizer || !e.Attendees[2].Organizer {
+		e.Attendees[1].Email != "eva@firma.sk" || !e.Attendees[1].Optional || e.Attendees[1].Organizer || !e.Attendees[2].Organizer {
 		t.Errorf("attendees (room skipped): %+v", e.Attendees)
 	}
 	if e.Description != "Agenda\n1. news & plans" {

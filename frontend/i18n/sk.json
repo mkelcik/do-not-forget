@@ -61,6 +61,7 @@
   "detail.attendees": "Účastníci",
   "attendee.organizer": "organizátor",
   "attendee.optional": "nepovinný",
+  "attendee.self": "ty",
 
   "footer.refresh": "Obnoviť",
   "footer.settings": "Nastavenia",

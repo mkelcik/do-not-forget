@@ -42,6 +42,7 @@ type Event struct {
 
 type Attendee struct {
 	Name   string `json:"name"`
+	Email  string `json:"email,omitempty"`
 	Status string `json:"status"` // pending | yes | maybe | no
 	Self   bool   `json:"self,omitempty"`
 	// Organizer and Optional are only labels in the guest list; they change no behaviour.

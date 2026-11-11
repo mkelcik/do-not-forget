@@ -57,6 +57,7 @@
   "detail.attendees": "Attendees",
   "attendee.organizer": "organizer",
   "attendee.optional": "optional",
+  "attendee.self": "you",
 
   "footer.refresh": "Refresh",
   "footer.settings": "Settings",

@@ -761,7 +761,7 @@ func (ge gEvent) event(account string, cal Calendar) (Event, bool) {
 			name = a.Email
 		}
 		status := googleResponse[a.ResponseStatus]
-		e.Attendees = append(e.Attendees, Attendee{Name: name, Status: status, Self: a.Self, Organizer: a.Organizer, Optional: a.Optional})
+		e.Attendees = append(e.Attendees, Attendee{Name: name, Email: a.Email, Status: status, Self: a.Self, Organizer: a.Organizer, Optional: a.Optional})
 		if a.Self && !ge.Organizer.Self { // my own meetings have nothing to answer
 			e.Response = status
 		}
