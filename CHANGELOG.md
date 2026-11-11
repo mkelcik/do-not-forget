@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-11
+
 ### Added
 
 - Event details count the guests' answers ("3 accepted · 1 maybe · 1 declined"), list the
