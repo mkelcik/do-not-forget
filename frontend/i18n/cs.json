@@ -57,7 +57,10 @@
   "detail.description": "Popis",
   "detail.more": "Zobrazit více",
   "detail.less": "Zobrazit méně",
+  "detail.organizer": "Organizátor",
   "detail.attendees": "Účastníci",
+  "attendee.organizer": "organizátor",
+  "attendee.optional": "nepovinný",
 
   "footer.refresh": "Obnovit",
   "footer.settings": "Nastavení",

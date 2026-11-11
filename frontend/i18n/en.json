@@ -53,7 +53,10 @@
   "detail.description": "Description",
   "detail.more": "Show more",
   "detail.less": "Show less",
+  "detail.organizer": "Organizer",
   "detail.attendees": "Attendees",
+  "attendee.organizer": "organizer",
+  "attendee.optional": "optional",
 
   "footer.refresh": "Refresh",
   "footer.settings": "Settings",

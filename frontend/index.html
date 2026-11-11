@@ -131,6 +131,21 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
   display: grid; place-items: center; }
 .person.yes b { background: var(--personal); color: #fff; }
 .person.no b { background: var(--danger); color: #fff; }
+.person b { position: relative; }
+.person b i { position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%;
+  font-size: 7px; font-style: normal; line-height: 10px; text-align: center; background: var(--card); color: var(--muted);
+  box-shadow: 0 0 0 1px var(--line); }
+.person.yes b i { color: var(--personal); }
+.person.maybe b i { color: var(--warn); }
+.person.no b i { color: var(--danger); }
+.person.no { color: var(--muted); text-decoration: line-through; }
+.person.optional { background: none; box-shadow: inset 0 0 0 1px var(--line); }
+.person small { color: var(--muted); font-size: 10px; }
+.tallies { display: inline-flex; gap: 4px; margin-left: 4px; }
+.tally { padding: 0 5px; border-radius: 99px; font-size: 10px; font-weight: 600; color: #fff; background: var(--muted); }
+.tally.yes { background: var(--personal); }
+.tally.maybe { background: var(--warn); }
+.tally.no { background: var(--danger); }
 .actions { display: flex; gap: 6px; }
 .actions button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); }
 .actions .join { border: 0; }
@@ -458,9 +473,29 @@ function description(e) {
     (long ? `<button class="link-btn more" data-more="${esc(e.id)}">${t(folded ? "detail.more" : "detail.less")}</button>` : "");
 }
 
+// Guest list order: organizer, then by answer; the badge marks the answer so it doesn't rest on colour alone.
+const statusOrder = ["yes", "maybe", "pending", "no"];
+const statusIcon = { yes: "✓", maybe: "?", no: "✕", pending: "…" };
+const rank = (p) => p.organizer ? -1 : statusOrder.indexOf(p.status);
+
+function people(list) {
+  if (!list.length) return "";
+  const known = (s) => statusOrder.includes(s) ? s : "pending";
+  const counts = statusOrder.map((s) => [s, list.filter((p) => known(p.status) === s).length]).filter(([, n]) => n);
+  const summary = counts.map(([s, n]) =>
+    `<span class="tally ${s}" title="${esc(t("status." + s))}">${statusIcon[s]} ${n}</span>`).join("");
+  const pills = [...list].sort((a, b) => rank(a) - rank(b)).map((p) => {
+    const s = known(p.status);
+    const tags = [p.organizer && t("attendee.organizer"), p.optional && t("attendee.optional")].filter(Boolean);
+    const tip = [p.name, t("status." + s), ...tags].filter(Boolean).join(" · ");
+    return `<span class="person ${s} ${p.optional ? "optional" : ""}" title="${esc(tip)}">` +
+      `<b>${esc(initial(p.name))}<i>${statusIcon[s]}</i></b>${esc(p.name || "")}` +
+      tags.map((x) => `<small>${esc(x)}</small>`).join("") + `</span>`;
+  }).join("");
+  return `<div><div class="k">${t("detail.attendees")} <span class="tallies">${summary}</span></div><div class="people">${pills}</div></div>`;
+}
+
 function detail(e) {
-  const people = (e.attendees || []).map((p) =>
-    `<span class="person ${esc(p.status)}"><b>${esc(initial(p.name))}</b>${esc(p.name || "")}</span>`).join("");
   const rule = ruleFor(e);
   const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">${t("join")}</button>` : "") +
     (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : "");
@@ -472,7 +507,10 @@ function detail(e) {
     e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
     e.description && `<div><div class="k">${t("detail.description")}</div>${description(e)}</div>`,
     e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp.html(e, "detail")}</div>`,
-    people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
+    // The organizer is tagged in the guest list; this covers events where they aren't a guest.
+    e.organizer && !(e.attendees || []).some((p) => p.organizer) &&
+      `<div><div class="k">${t("detail.organizer")}</div>${esc(e.organizer)}</div>`,
+    people(e.attendees || []),
     actions && `<div class="actions">${actions}</div>`,
     `<div class="actions">${manage}</div>`,
     ruleAsk?.id === e.id && `<div class="scope"><button data-rule-scope="one">${t("rsvp.this")}</button>

@@ -44,6 +44,9 @@ type Attendee struct {
 	Name   string `json:"name"`
 	Status string `json:"status"` // pending | yes | maybe | no
 	Self   bool   `json:"self,omitempty"`
+	// Organizer and Optional are only labels in the guest list; they change no behaviour.
+	Organizer bool `json:"organizer,omitempty"`
+	Optional  bool `json:"optional,omitempty"`
 }
 
 // Source is a calendar provider: dummy for development, Google, later others.
