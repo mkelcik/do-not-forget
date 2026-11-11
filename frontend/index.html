@@ -96,7 +96,6 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .scope button:not(.link-btn):hover { background: var(--line); }
 .rsvp-failed { margin-top: 6px; font-size: 12px; font-weight: 400; color: var(--danger); }
 .hero .ask .scope { margin-top: 0; }
-.person.maybe b { background: var(--warn); color: #fff; }
 .conflict { margin: 4px 0; padding: 2px 0 2px; border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
   background: color-mix(in srgb, var(--danger) 7%, transparent); }
@@ -126,11 +125,30 @@ main { flex: 1; overflow-y: auto; padding: 8px 12px; }
 .desc.folded { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
 .detail .more { padding: 2px 0; margin-top: 2px; }
 .people { display: flex; flex-wrap: wrap; gap: 4px; }
-.person { padding: 2px 6px 2px 2px; border-radius: 99px; background: var(--bg); display: flex; gap: 4px; align-items: center; }
-.person b { width: 18px; height: 18px; border-radius: 50%; background: var(--line); font-size: 9px;
+.person { padding: 2px 8px 2px 2px; border-radius: 99px; background: var(--bg); display: flex; gap: 5px; align-items: center;
+  border: 1px solid transparent; cursor: default; outline: none; }
+.person:hover, .person:focus-visible { border-color: var(--line); }
+.person b { width: 18px; height: 18px; border-radius: 50%; background: var(--line); color: var(--muted); font-size: 9px;
   display: grid; place-items: center; }
-.person.yes b { background: var(--personal); color: #fff; }
-.person.no b { background: var(--danger); color: #fff; }
+.person.yes b { background: color-mix(in srgb, var(--personal) 85%, transparent); color: #fff; }
+.person.maybe b { background: color-mix(in srgb, var(--warn) 85%, transparent); color: #fff; }
+.person.no b { background: color-mix(in srgb, var(--danger) 85%, transparent); color: #fff; }
+.person.no { opacity: .55; }
+.person.optional { background: none; border: 1px dashed color-mix(in srgb, var(--muted) 60%, transparent); }
+.person small { color: var(--muted); font-size: 10px; }
+.attendees-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tallies { display: inline-flex; gap: 10px; flex-wrap: wrap; }
+.tally, #person-card .state { display: inline-flex; align-items: center; gap: 4px; }
+.tally i, #person-card .state i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+:is(.tally, #person-card .state).yes i { background: var(--personal); }
+:is(.tally, #person-card .state).maybe i { background: var(--warn); }
+:is(.tally, #person-card .state).no i { background: var(--danger); }
+#person-card { position: fixed; z-index: 10; max-width: 260px; padding: 7px 10px; border-radius: 8px; font-size: 12px;
+  background: var(--card); color: var(--text); border: 1px solid var(--line); box-shadow: 0 4px 14px #00000033;
+  pointer-events: none; display: grid; gap: 2px; }
+#person-card[hidden] { display: none; }
+#person-card .mail { color: var(--muted); overflow-wrap: anywhere; }
+#person-card .state { color: var(--muted); font-size: 11px; margin-top: 2px; }
 .actions { display: flex; gap: 6px; }
 .actions button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); }
 .actions .join { border: 0; }
@@ -458,9 +476,56 @@ function description(e) {
     (long ? `<button class="link-btn more" data-more="${esc(e.id)}">${t(folded ? "detail.more" : "detail.less")}</button>` : "");
 }
 
+// Guest list order: organizer, then by answer. The answer is in words in the tallies and the
+// hover card, so it doesn't rest on the avatar colour alone.
+const statusOrder = ["yes", "maybe", "pending", "no"];
+const known = (s) => statusOrder.includes(s) ? s : "pending";
+const rank = (p) => p.organizer ? -1 : statusOrder.indexOf(known(p.status));
+
+function people(list) {
+  if (!list.length) return "";
+  const tallies = statusOrder.map((s) => [s, list.filter((p) => known(p.status) === s).length]).filter(([, n]) => n)
+    .map(([s, n]) => `<span class="tally ${s}"><i></i>${n} ${esc(t("status." + s))}</span>`).join("");
+  const pills = [...list].sort((a, b) => rank(a) - rank(b)).map((p) => {
+    const s = known(p.status);
+    const tags = [p.self && t("attendee.self"), p.organizer && t("attendee.organizer"), p.optional && t("attendee.optional")].filter(Boolean);
+    const email = p.email && p.email !== p.name ? p.email : "";
+    const label = [p.name, email, [t("status." + s), ...tags].join(" · ")].filter(Boolean).join(", ");
+    return `<span class="person ${s}${p.optional ? " optional" : ""}" tabindex="0" role="group" aria-label="${esc(label)}"` +
+      ` data-name="${esc(p.name || "")}"` +
+      ` data-email="${esc(email)}" data-status="${s}" data-tags="${esc(tags.join(" · "))}">` +
+      `<b>${esc(initial(p.name))}</b>${esc(p.name || "")}` +
+      (p.organizer ? `<small>${esc(t("attendee.organizer"))}</small>` : "") + `</span>`;
+  }).join("");
+  return `<div><div class="k attendees-head">${t("detail.attendees")}<span class="tallies">${tallies}</span></div>` +
+    `<div class="people">${pills}</div></div>`;
+}
+
+// One floating card for whichever guest is under the pointer or focused: full name, email, answer.
+const personCard = document.createElement("div");
+personCard.id = "person-card";
+personCard.hidden = true;
+document.body.append(personCard);
+function showPerson(el) {
+  const d = el.dataset;
+  personCard.innerHTML = `<b>${esc(d.name)}</b>` + (d.email ? `<div class="mail">${esc(d.email)}</div>` : "") +
+    `<div class="state ${esc(d.status)}"><i></i>${esc(t("status." + d.status))}${d.tags ? ` · ${esc(d.tags)}` : ""}</div>`;
+  personCard.hidden = false;
+  const r = el.getBoundingClientRect(), c = personCard.getBoundingClientRect();
+  const top = r.top - c.height - 6 >= 4 ? r.top - c.height - 6 : r.bottom + 6;
+  personCard.style.top = `${top}px`;
+  personCard.style.left = `${Math.max(4, Math.min(r.left, innerWidth - c.width - 4))}px`;
+}
+const hidePerson = () => { personCard.hidden = true; };
+document.addEventListener("mouseover", (ev) => {
+  const el = ev.target.closest?.(".person");
+  el ? showPerson(el) : hidePerson();
+});
+document.addEventListener("focusin", (ev) => { if (ev.target.matches?.(".person")) showPerson(ev.target); });
+document.addEventListener("focusout", hidePerson);
+document.addEventListener("scroll", hidePerson, true);
+
 function detail(e) {
-  const people = (e.attendees || []).map((p) =>
-    `<span class="person ${esc(p.status)}"><b>${esc(initial(p.name))}</b>${esc(p.name || "")}</span>`).join("");
   const rule = ruleFor(e);
   const actions = (e.link ? `<button class="join" data-url="${esc(e.link)}">${t("join")}</button>` : "") +
     (e.calendarUrl ? `<button data-url="${esc(e.calendarUrl)}">${t("open.calendar")}</button>` : "");
@@ -472,7 +537,10 @@ function detail(e) {
     e.link && `<div><div class="k">${t("detail.link")}</div>${esc(e.link)}</div>`,
     e.description && `<div><div class="k">${t("detail.description")}</div>${description(e)}</div>`,
     e.response && `<div><div class="k">${t("rsvp.question")}</div>${rsvp.html(e, "detail")}</div>`,
-    people && `<div><div class="k">${t("detail.attendees")}</div><div class="people">${people}</div></div>`,
+    // The organizer is tagged in the guest list; this covers events where they aren't a guest.
+    e.organizer && !(e.attendees || []).some((p) => p.organizer) &&
+      `<div><div class="k">${t("detail.organizer")}</div>${esc(e.organizer)}</div>`,
+    people(e.attendees || []),
     actions && `<div class="actions">${actions}</div>`,
     `<div class="actions">${manage}</div>`,
     ruleAsk?.id === e.id && `<div class="scope"><button data-rule-scope="one">${t("rsvp.this")}</button>

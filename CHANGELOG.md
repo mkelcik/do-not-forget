@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Event details count the guests' answers ("3 accepted · 1 maybe · 1 declined"), list the
+  organizer first and mark optional guests. Hovering a guest shows their full name, email and
+  answer.
+
 ### Security
 
 - Built with Go 1.27.4, which fixes GO-2026-6859 in `net/http`; dependencies updated.

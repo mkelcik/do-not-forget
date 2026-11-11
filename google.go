@@ -686,6 +686,8 @@ type gEvent struct {
 		DisplayName    string `json:"displayName"`
 		ResponseStatus string `json:"responseStatus"`
 		Self           bool   `json:"self"`
+		Organizer      bool   `json:"organizer"`
+		Optional       bool   `json:"optional"`
 		Resource       bool   `json:"resource"` // rooms and equipment
 	} `json:"attendees"`
 	ConferenceData struct {
@@ -759,7 +761,7 @@ func (ge gEvent) event(account string, cal Calendar) (Event, bool) {
 			name = a.Email
 		}
 		status := googleResponse[a.ResponseStatus]
-		e.Attendees = append(e.Attendees, Attendee{Name: name, Status: status, Self: a.Self})
+		e.Attendees = append(e.Attendees, Attendee{Name: name, Email: a.Email, Status: status, Self: a.Self, Organizer: a.Organizer, Optional: a.Optional})
 		if a.Self && !ge.Organizer.Self { // my own meetings have nothing to answer
 			e.Response = status
 		}

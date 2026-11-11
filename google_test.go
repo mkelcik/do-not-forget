@@ -26,7 +26,8 @@ func TestGoogleEventMapping(t *testing.T) {
 		"organizer": {"email": "boss@firma.sk"},
 		"attendees": [
 			{"email": "me@firma.sk", "self": true, "responseStatus": "tentative"},
-			{"email": "eva@firma.sk", "displayName": "Eva", "responseStatus": "accepted"},
+			{"email": "eva@firma.sk", "displayName": "Eva", "responseStatus": "accepted", "optional": true},
+			{"email": "boss@firma.sk", "organizer": true, "responseStatus": "accepted"},
 			{"email": "room@resource.calendar.google.com", "resource": true, "responseStatus": "accepted"}],
 		"conferenceData": {"entryPoints": [
 			{"entryPointType": "phone", "uri": "tel:+421"},
@@ -49,7 +50,8 @@ func TestGoogleEventMapping(t *testing.T) {
 	if e.Link != "https://meet.google.com/abc-defg-hij?authuser=me%40firma.sk" || e.Response != "maybe" || e.Organizer != "boss@firma.sk" {
 		t.Errorf("link/response/organizer: %+v", e)
 	}
-	if len(e.Attendees) != 2 || e.Attendees[1].Name != "Eva" || e.Attendees[1].Status != "yes" {
+	if len(e.Attendees) != 3 || e.Attendees[1].Name != "Eva" || e.Attendees[1].Status != "yes" ||
+		e.Attendees[1].Email != "eva@firma.sk" || !e.Attendees[1].Optional || e.Attendees[1].Organizer || !e.Attendees[2].Organizer {
 		t.Errorf("attendees (room skipped): %+v", e.Attendees)
 	}
 	if e.Description != "Agenda\n1. news & plans" {
