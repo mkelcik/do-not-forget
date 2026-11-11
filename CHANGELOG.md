@@ -13,17 +13,16 @@ versions follow [Semantic Versioning](https://semver.org/).
   organizer first and mark optional guests. Hovering a guest shows their full name, email and
   answer.
 
-### Security
-
-- Built with Go 1.27.4, which fixes GO-2026-6859 in `net/http`; dependencies updated.
-
-## [0.13.0] - 2026-11-03
-
 ### Changed
 
+- Wails v3.1.0 instead of the v3.0.0-beta.30 pre-release.
 - Show failed syncs above the agenda with a retry ([#33](https://github.com/mkelcik/do-not-forget/pull/33))
 - Add a workflow that cuts a release in one run ([#34](https://github.com/mkelcik/do-not-forget/pull/34))
 - List merged PRs when the changelog has nothing unreleased ([#35](https://github.com/mkelcik/do-not-forget/pull/35))
+
+### Security
+
+- Built with Go 1.27.4, which fixes GO-2026-6859 in `net/http`; dependencies updated.
 
 ## [0.12.2] - 2026-10-26
 
