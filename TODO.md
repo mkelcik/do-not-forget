@@ -22,11 +22,12 @@ What's left, roughly in the order we want to do it within each section.
 
 ## Technical debt
 
-- [ ] The Linux tooltip goes through reflection into Wails (`platform_linux.go`): send Wails a PR
-      for `setTooltip`, then remove it
+- [ ] The Linux tooltip goes through reflection into Wails (`platform_linux.go`): Wails v3.1.0
+      implements `SetTooltip`, but its title follows `SetLabel` (the SNI Title); switch if that's
+      acceptable on KDE, then remove the reflection
 - [ ] `GDK_BACKEND=x11` for window placement on Wayland (`main.go`): move to layer-shell once
       Wails supports it
-- [ ] Wails is pinned to `v3.0.0-beta.30`; on upgrade check the tooltip on KDE
+- [ ] Wails is pinned to `v3.1.0`; check the tooltip on KDE after this and every upgrade
 - [ ] After unmuting, the update notification can take up to 6 h to come back (Settings ›
       About shows it right away)
 - [ ] macOS: the muted tray icon isn't a template (doesn't follow light / dark menu bars);
