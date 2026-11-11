@@ -69,7 +69,7 @@ hand (`git tag vX.Y.Z <merge commit> && git push origin vX.Y.Z`).
 - Match the surrounding code: short doc comments that say *why*, no boilerplate.
 - Keep `go.mod` lean. The Calendar API is called over plain REST; `oauth2/google` and
   `google.golang.org/api` are deliberately not used.
-- Wails is pinned (`v3.0.0-beta.30`); `platform_linux.go` reaches into its internals.
+- Wails is pinned (`v3.1.0`); `platform_linux.go` reaches into its internals.
 - Every user-facing string goes through `T()` (Go) or `t()` (JS) with a key in **all**
   `frontend/i18n/*.json`. `TestTranslationFiles` enforces matching keys and placeholders,
   every plural form a language needs (and no others), and no HTML in translations.

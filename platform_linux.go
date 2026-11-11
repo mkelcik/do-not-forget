@@ -51,8 +51,10 @@ func skipTaskbar(w application.Window) {
 }
 
 // setTrayTooltip sets the SNI ToolTip (Plasma renders title + rich-text subtitle).
-// Wails' Linux setTooltip is a TBD no-op, so we reach its D-Bus props via reflection.
-// ponytail: pinned to Wails v3.0.0-beta.30 internals, drop once upstream implements setTooltip.
+// Wails' Linux SetTooltip (since v3.1.0) only sets the subtitle and takes the title from
+// SetLabel, which also renames the SNI item, so we still set the props via reflection. Safe
+// only while nothing on Linux calls SetLabel or SetTooltip: either republishes ToolTip.
+// ponytail: pinned to Wails v3.1.0 internals (impl.props, the tooltip struct).
 func setTrayTooltip(tray *application.SystemTray, title, sub string) {
 	impl := reflect.ValueOf(tray).Elem().FieldByName("impl")
 	if !impl.IsValid() || impl.IsNil() {
