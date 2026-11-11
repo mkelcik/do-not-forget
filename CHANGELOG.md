@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- Built with Go 1.27.4, which fixes GO-2026-6859 in `net/http`; dependencies updated.
+
 ## [0.13.0] - 2026-11-03
 
 ### Changed
