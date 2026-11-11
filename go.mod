@@ -1,14 +1,14 @@
 module github.com/mkelcik/do-not-forget
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/godbus/dbus/v5 v5.2.4
 	github.com/wailsapp/wails/v3 v3.0.0-beta.30
 	github.com/zalando/go-keyring v0.2.8
-	golang.org/x/oauth2 v0.37.0
-	golang.org/x/sys v0.49.0
-	golang.org/x/text v0.43.0
+	golang.org/x/oauth2 v0.38.0
+	golang.org/x/sys v0.50.0
+	golang.org/x/text v0.44.0
 )
 
 require (
