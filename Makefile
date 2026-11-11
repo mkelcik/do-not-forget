@@ -82,7 +82,7 @@ tidy-check:
 	go mod tidy -diff
 
 tools:
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 	go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 
 ci: fmt-check tidy-check vet lint test vuln
